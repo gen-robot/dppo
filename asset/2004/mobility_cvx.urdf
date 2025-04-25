@@ -1,0 +1,394 @@
+<?xml version="1.0" ?>
+<robot name="partnet_LabDoorEnvironment">
+	<material name="door_frame_color">
+		<color rgba="0.973 0.757 0.478 1.0"/>
+  	</material>
+  	<material name="aluminum">
+    	<color rgba="0.5 0.5 0.5 1"/>
+  	</material>
+	<material name="silver">
+    	<color rgba="0.753 0.753 0.753 1.0"/>
+  	</material>
+  	<material name="white">
+    	<color rgba="1.0 1.0 1.0 1.0"/>
+ 	</material>
+
+	<!-- base -->
+	<link name="base"/>
+
+	<!-- door frame  -->
+	<joint name="joint_doorframe" type="fixed">
+		<origin rpy="0 0 0" xyz="-0.395 0 0.505"/>
+		<child link="link_doorframe"/>
+		<parent link="base"/>
+	</joint>
+	<link name="link_doorframe">
+		<visual name="frame_vertical_bar_left">
+			<origin xyz="0 0.465 0"/>
+			<geometry>
+				<box size="0.035 0.05 2.69"/>
+			</geometry>
+			<material name="door_frame_color"/>
+		</visual>
+		<visual name="frame_vertical_bar_right">
+			<origin xyz="0 -0.465 0"/>
+			<geometry>
+				<box size="0.035 0.05 2.69"/>
+			</geometry>
+			<material name="door_frame_color"/>
+		</visual>
+		<visual name="frame_horizontal_bar">
+			<origin xyz="0 0 1.35"/>
+			<geometry>
+				<box size="0.035 0.98 0.05"/>
+			</geometry>
+			<material name="door_frame_color"/>
+		</visual>
+
+		<!-- wall -->
+		<visual name="wall_left_1">
+			<origin xyz="-0.001 0.56 0.02"/>
+			<geometry>
+				<box size="0.035 0.19 2.709"/>
+			</geometry>
+			<material name="white"/>
+		</visual>
+		<visual name="wall_right_1">
+			<origin xyz="-0.001 -0.4975 0.02"/>
+			<geometry>
+				<box size="0.035 0.065 2.709"/>
+			</geometry>
+			<material name="white"/>
+		</visual>
+		<visual name="wall_left_2">
+			<origin xyz="-0.001 0.56 0.02"/>
+			<geometry>
+				<box size="0.035 0.19 2.709"/>
+			</geometry>
+			<material name="white"/>
+		</visual>
+		<visual name="wall_right_2">
+			<origin xyz="-0.001 -0.4975 0.02"/>
+			<geometry>
+				<box size="0.035 0.065 2.709"/>
+			</geometry>
+			<material name="white"/>
+		</visual>
+		<visual name="wall_left_3">
+			<origin xyz="0.685 0.6375 0.02"/>
+			<geometry>
+				<box size="1.37 0.035 2.709"/>
+			</geometry>
+			<material name="white"/>
+		</visual>
+		<visual name="wall_right_3">
+			<origin xyz="-0.48 -0.5125 0.02"/>
+			<geometry>
+				<box size="0.96 0.035 2.709"/>
+			</geometry>
+			<material name="white"/>
+		</visual>
+		<visual name="wall_left_4">
+			<origin xyz="1.3525 1.655 0.02"/>
+			<geometry>
+				<box size="0.035 2 2.709"/>
+			</geometry>
+			<material name="white"/>
+		</visual>
+		<visual name="wall_right_4">
+			<origin xyz="-1.96 -0.5125 0.02"/>
+			<geometry>
+				<box size="2 0.035 2.709"/>
+			</geometry>
+			<material name="silver"/>
+		</visual>
+
+		<collision>
+			<origin xyz="0 0.465 0"/>
+			<geometry>
+				<box size="0.035 0.05 2.69"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 -0.465 0"/>
+			<geometry>
+				<box size="0.035 0.05 2.69"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 0 1.35"/>
+			<geometry>
+				<box size="0.035 0.98 0.05"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="-0.001 0.56 0.02"/>
+			<geometry>
+				<box size="0.035 0.19 2.709"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="-0.001 -0.4975 0.02"/>
+			<geometry>
+				<box size="0.035 0.065 2.709"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="-0.001 0.56 0.02"/>
+			<geometry>
+				<box size="0.035 0.19 2.709"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="-0.001 -0.4975 0.02"/>
+			<geometry>
+				<box size="0.035 0.065 2.709"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0.685 0.6375 0.02"/>
+			<geometry>
+				<box size="1.37 0.035 2.709"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="-0.48 -0.5125 0.02"/>
+			<geometry>
+				<box size="0.96 0.035 2.709"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="1.3525 1.655 0.02"/>
+			<geometry>
+				<box size="0.035 2 2.709"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="-1.96 -0.5125 0.02"/>
+			<geometry>
+				<box size="2 0.035 2.709"/>
+			</geometry>
+		</collision>
+	</link>
+
+    <!--link_door_base_plus-->
+	<joint name="joint_door_base_plus" type="fixed">
+		<origin rpy="1.570796326794897 0 -1.570796326794897" xyz="0 0 0"/>
+		<child link="link_door_base_plus"/>
+		<parent link="base"/>
+	</joint>
+	<link name="link_door_base_plus">
+	</link>
+
+    <!-- door rotation shaft -->
+	<joint name="joint_rotation_shaft" type="revolute">
+		<origin xyz="0.44 1.35 0.3754050304999294"/>
+		<axis xyz="0 1 0"/>
+		<child link="link_door"/>
+		<parent link="link_door_base_plus"/>
+		<limit lower="0.0" upper="1.6022122533307945"/>
+	</joint>
+
+	<!-- door -->
+	<link name="link_door">
+		<inertial>
+			<mass value="2"/>
+			<inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+		</inertial>
+		<visual name="door_surface">
+			<origin xyz="-0.44 0 -0.3754050304999294"/>
+			<geometry>
+				<mesh filename="textured_objs/original-36.obj" scale="1.07 2.6 1.0"/>
+			</geometry>
+		</visual>
+		<visual name="fake_handle">
+			<origin xyz="0.3990322923139692 0.8448920249938966 -0.3754050304999294"/>
+			<geometry>
+				<mesh filename="textured_objs/original-38.obj" scale="0.0001 0.0001 0.0001"/>
+			</geometry>
+		</visual>
+		<collision>
+			<origin xyz="-0.44 0 -0.3754050304999294"/>
+			<geometry>
+				<mesh filename="textured_objs/original-36.obj" scale="1.07 2.6 1.0"/>
+			</geometry>
+		</collision>
+		<!-- <collision>
+			<origin xyz="-0.44 0 -0.3754050304999294"/>
+			<geometry>
+				<mesh filename="textured_objs/original-38.obj" scale="0.0001 0.0001 0.0001"/>
+			</geometry>
+		</collision> -->
+	</link>
+
+    <!-- door lock -->
+	<joint name="joint_lock_base" type="fixed">
+		<origin rpy="0 0 0" xyz="-0.83 -1.217 0"/>
+		<child link="link_lock_base"/>
+		<parent link="link_door"/>
+	</joint>
+	<link name="link_lock_base">
+		<visual name="door_lock_base_big">
+			<origin rpy="0 0 0 " xyz="0 0 0.025"/>
+			<geometry>
+				<capsule radius="0.025" length="0.005"/>
+			</geometry>
+			<material name="aluminum"/>
+		</visual>
+		<visual name="door_lock_base_small">
+			<origin rpy="0 0 0 " xyz="0 0 0.0515"/>
+			<geometry>
+				<capsule radius="0.0175" length="0.063"/>
+			</geometry>
+			<material name="aluminum"/>
+		</visual>
+		<visual name="door_cylinder_big_1">
+			<origin rpy="0 0 0 " xyz="0 -0.075 0.025"/>
+			<geometry>
+				<capsule radius="0.025" length="0.005"/>
+			</geometry>
+			<material name="aluminum"/>
+		</visual>
+		<visual name="door_cylinder_small_1">
+			<origin rpy="0 0 0 " xyz="0 -0.075 0.0515"/>
+			<geometry>
+				<box size="0.028 0.015 0.015"/>
+			</geometry>
+			<material name="aluminum"/>
+		</visual>
+		<visual name="door_cylinder_big_2">
+			<origin rpy="0 0 0 " xyz="0 -0.94 0.025"/>
+			<geometry>
+				<capsule radius="0.025" length="0.005"/>
+			</geometry>
+			<material name="aluminum"/>
+		</visual>
+		<visual name="door_cylinder_small_2">
+			<origin rpy="0 0 0 " xyz="0 -0.94 0.0515"/>
+			<geometry>
+				<capsule radius="0.0175" length="0.04"/>
+			</geometry>
+			<material name="aluminum"/>
+		</visual>
+		<visual name="door_right_shaft_1">
+			<origin rpy="1.570796326794897 0 0 " xyz="0.82 -0.73 0.01"/>
+			<geometry>
+				<capsule radius="0.005" length="0.1"/>
+			</geometry>
+			<material name="aluminum"/>
+		</visual>
+		<visual name="door_right_shaft_2">
+			<origin rpy="1.570796326794897 0 0 " xyz="0.82 0.79 0.02"/>
+			<geometry>
+				<capsule radius="0.005" length="0.1"/>
+			</geometry>
+			<material name="aluminum"/>
+		</visual>
+		<visual name="door_right_shaft_3">
+			<origin rpy="1.570796326794897 0 0 " xyz="0.82 1.41 0.03"/>
+			<geometry>
+				<capsule radius="0.005" length="0.1"/>
+			</geometry>
+			<material name="aluminum"/>
+		</visual>
+
+		<collision>
+			<origin rpy="0 0 0 " xyz="0 0 0.025"/>
+			<geometry>
+				<capsule radius="0.025" length="0.005"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="0 0 0 " xyz="0 0 0.0515"/>
+			<geometry>
+				<capsule radius="0.0175" length="0.063"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="0 0 0 " xyz="0 -0.075 0.025"/>
+			<geometry>
+				<capsule radius="0.025" length="0.005"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="0 0 0 " xyz="0 -0.075 0.0515"/>
+			<geometry>
+				<box size="0.028 0.015 0.015"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="0 0 0 " xyz="0 -0.94 0.025"/>
+			<geometry>
+				<capsule radius="0.025" length="0.005"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="0 0 0 " xyz="0 -0.94 0.0515"/>
+			<geometry>
+				<capsule radius="0.0175" length="0.04"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="1.570796326794897 0 0 " xyz="0.82 -0.73 0.01"/>
+			<geometry>
+				<capsule radius="0.005" length="0.1"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="1.570796326794897 0 0 " xyz="0.82 0.79 0.02"/>
+			<geometry>
+				<capsule radius="0.005" length="0.1"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin rpy="1.570796326794897 0 0 " xyz="0.82 1.41 0.03"/>
+			<geometry>
+				<capsule radius="0.005" length="0.1"/>
+			</geometry>
+		</collision>
+	</link>
+
+    <!-- lock and switch -->
+	<joint name="joint_lock_switch" type="revolute">
+		<origin xyz="0 0 0.093" rpy="0 0 0"/>
+		<axis xyz="0 0 -1"/>
+		<child link="link_switch_and_lock"/>
+		<parent link="link_lock_base"/>
+		<!-- angle 0-30 -->
+		<!-- <limit lower="-0.0" upper="0.523598775598299"/> -->
+		<limit lower="0.0" upper="1.57" />
+	</joint>
+    <link name="link_switch_and_lock">
+		<visual name="switch">
+			<origin xyz="0.0675 0 0"/>
+			<geometry>
+				<box size="0.135 0.015 0.02"/>
+			</geometry>
+			<material name="aluminum"/>
+		</visual>
+		<visual name="lock_bar">
+			<origin xyz="0 0 -0.16" rpy="0 1.570796326794897 0"/>
+			<geometry>
+				<box size="0.02 0.02 0.10"/>
+				<!-- <box size="0.01 0.01 0.01" /> -->
+			</geometry>
+			<material name="red">
+				<color rgba="1.0 0.0 0.0 1.0" />
+			</material>
+		</visual>
+		<collision>
+			<origin xyz="0.0675 0 0"/>
+			<geometry>
+				<box size="0.135 0.015 0.02"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 0 -0.16" rpy="0 1.570796326794897 0"/>
+			<!-- <origin xyz="0 0 -0.2" rpy="0 1.57 0" /> -->
+			<geometry>
+				<box size="0.02 0.02 0.10"/>
+				<!-- <box size="0.01 0.01 0.01" /> -->
+			</geometry>
+		</collision>
+	</link>
+</robot>

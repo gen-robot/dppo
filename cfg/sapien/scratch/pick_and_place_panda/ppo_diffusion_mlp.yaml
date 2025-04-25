@@ -1,0 +1,77 @@
+# 环境配置
+env_type: "sapien"
+env_name: "pick_and_place_panda"
+device: "cuda"
+seed: 42
+
+# 观察和动作空间
+obs_dim: 7  # TCP pose (6) + gripper width (1)
+action_dim: 7  # TCP pose (6) + gripper width (1)
+
+# 训练参数
+n_train_itr: 1000
+n_steps: 2048
+log_interval: 10
+save_interval: 100
+logdir: "logs/sapien/pick_and_place_panda"
+
+# 预训练策略路径
+policy_path: "logs/robomimic/pick_and_place_panda/policy_final.ckpt"
+
+# DPPO智能体配置
+agent:
+  hidden_dim: 256
+  n_layers: 2
+  learning_rate: 3e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_ratio: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.01
+  max_grad_norm: 0.5
+  n_epochs: 10
+  batch_size: 64
+
+# 环境配置
+env:
+  n_envs: 10
+  name: ${env_name}
+  max_episode_steps: 1000
+  reset_at_iteration: False
+  save_video: False
+  wrappers:
+    multi_step:
+      n_obs_steps: ${cond_steps}
+      n_action_steps: ${act_steps}
+      max_episode_steps: ${env.max_episode_steps}
+      reset_within_step: True
+
+wandb:
+  entity: ${oc.env:DPPO_WANDB_ENTITY}
+  project: sapien-${env_name}-scratch
+  run: ${now:%H-%M-%S}_${name}
+
+train:
+  n_train_itr: 1000
+  n_steps: 1000
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_ploss_coef: 0.2
+  clip_vloss_coef: 0.2
+  value_loss_coef: 0.5
+  entropy_coef: 0.01
+  max_grad_norm: 0.5
+  lr: 3e-4
+  weight_decay: 0
+  lr_scheduler:
+    first_cycle_steps: 1000
+    warmup_steps: 10
+    min_lr: 3e-4
+  save_model_freq: 100
+  val_freq: 10
+  render:
+    freq: 1
+    num: 0
+  batch_size: 256
+  num_epochs: 10
+  replay_ratio: 128 
