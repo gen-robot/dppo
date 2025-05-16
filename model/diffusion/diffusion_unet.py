@@ -14,27 +14,41 @@ from diffusers.training_utils import EMAModel
 
 
 class DiffusionPolicy(nn.Module):
-    def __init__(self, args_override):
+    def __init__(
+            self, 
+            num_images=1,
+            observation_horizon=1,
+            action_horizon=1,
+            prediction_horizon=1,
+            num_inference_timesteps=10,
+            feature_dim=64,
+            global_obs_dim=10,
+            action_dim=10,
+            resnet_pretrained=True,
+            ema_power=0.75,
+            lr=1e-5,
+            weight_decay=0,       
+            diffusion_step_embed_dim=256,          
+        ):
         super().__init__()
 
-        self.num_images = args_override.get('num_images', 1)
+        self.num_images = num_images
 
-        self.observation_horizon = args_override.get('observation_horizon', 1)
-        # self.action_horizon = args_override.get('action_horizon', 1)          # apply chunk size
-        self.prediction_horizon = args_override.get('prediction_horizon', 1)    # chunk size
-        self.num_inference_timesteps = args_override.get('num_inference_timesteps', 10)
-        self.ema_power = args_override.get('ema_power', 0.75)
-        self.lr = args_override.get('lr', 1e-5)
-        self.weight_decay = args_override.get('weight_decay', 0)
+        self.observation_horizon = observation_horizon
+        # self.action_horizon =  action_horizon          # apply chunk size
+        self.prediction_horizon = prediction_horizon   # chunk size
+        self.num_inference_timesteps = num_inference_timesteps
+        self.ema_power =  ema_power
+        self.lr = lr
+        self.weight_decay = weight_decay
 
         self.num_kp = 32
-        self.feature_dimension = args_override.get('feature_dim', 64)
-        self.qpos_dim = args_override.get('global_obs_dim', 10)
-        self.ac_dim = args_override.get('action_dim', 10)
+        self.feature_dimension = feature_dim
+        self.qpos_dim = global_obs_dim
+        self.ac_dim =  action_dim
         self.obs_dim = self.feature_dimension * self.num_images + self.qpos_dim  # camera features and proprio
 
-        self.resnet_pretrained = args_override.get("resnet_pretrained", True)
-
+        self.resnet_pretrained = resnet_pretrained
         backbones = []
         pools = []
         linears = []
@@ -74,7 +88,7 @@ class DiffusionPolicy(nn.Module):
             input_dim=self.ac_dim,
             global_cond_dim=self.obs_dim * self.observation_horizon,
             input_len=self.prediction_horizon,
-            diffusion_step_embed_dim=args_override.get("diffusion_step_embed_dim", 256)
+            diffusion_step_embed_dim= diffusion_step_embed_dim
         )
 
         nets = nn.ModuleDict({
@@ -112,7 +126,56 @@ class DiffusionPolicy(nn.Module):
         optimizer = torch.optim.AdamW(self.nets.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         return optimizer
 
-    def __call__(self, qpos, image, actions=None, is_pad=None):
+    def __call__(self, x, t, cond=None):
+        """
+        Aligned with DiffusionModel, for noise prediction
+        
+        Args:
+            x: noisy naction, shape (B, T, action_dim)
+            t: timesteps, shape (B,)
+            cond: include 'state' and 'rgb' 
+        
+        Returns:
+            predicted noise, shape (B, T, action_dim)
+        """
+        if cond is None:
+            raise ValueError("condition must be provided")
+            
+        qpos = cond.get('state')
+        image = cond.get('rgb')
+        
+        if qpos is None or image is None:
+            raise ValueError("condition must include 'state' and 'rgb' keys")
+            
+        nets = self.nets
+        if not self.training and self.ema is not None:
+            nets = self.ema.averaged_model
+            
+        # feature extraction
+        all_features = []
+        for cam_id in range(self.num_images):
+            cam_image = image[:, cam_id]
+            cam_features = nets['policy']['backbones'][cam_id](cam_image)
+            pool_features = nets['policy']['pools'][cam_id](cam_features)
+            pool_features = torch.flatten(pool_features, start_dim=1)
+            out_features = nets['policy']['linears'][cam_id](pool_features)
+            all_features.append(out_features)
+            
+        obs_cond = torch.cat(all_features + [qpos], dim=1)
+        
+        # predict noise
+        noise_pred = nets['policy']['noise_pred_net'](
+            sample=x,
+            timestep=t,
+            global_cond=obs_cond
+        )
+        
+        return noise_pred
+
+    def call(self, qpos, image, actions=None, is_pad=None):
+        """
+            original call function in dp pretrainning
+        """
         B = qpos.shape[0]
         if actions is not None:  # training time
             nets = self.nets
