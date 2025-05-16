@@ -160,4 +160,4 @@ dependencies:
     - virtualenv==20.30.0
     - wandb==0.17.7
     - zipp==3.20.2
-prefix: /home/susichang/anaconda3/envs/dppo_sapien
+prefix: /home/zhouzhiting/anaconda3/envs/dppo_sapien

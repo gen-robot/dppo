@@ -145,4 +145,4 @@ dependencies:
     - transforms3d==0.4.2
     - trimesh==4.6.6
     - virtualenv==20.30.0
-prefix: /home/susichang/anaconda3/envs/dppo_sapien 
+prefix: /home/zhouzhiting/anaconda3/envs/dppo_sapien 

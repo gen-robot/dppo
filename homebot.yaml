@@ -96,4 +96,4 @@ dependencies:
     - virtualenv==20.30.0
     - wandb==0.19.9
     - zipp==3.20.2
-prefix: /home/susichang/anaconda3/envs/sapien
+prefix: /home/zhouzhiting/anaconda3/envs/sapien

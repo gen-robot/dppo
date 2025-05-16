@@ -113,4 +113,4 @@ dependencies:
     - urllib3==2.2.3
     - wandb==0.17.7
     - zipp==3.20.2
-prefix: /home/susichang/anaconda3/envs/dppo
+prefix: /home/zhouzhiting/anaconda3/envs/dppo

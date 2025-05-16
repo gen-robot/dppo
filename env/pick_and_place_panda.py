@@ -40,9 +40,6 @@ import pickle
 import requests
 from datetime import datetime
 
-# from Projects.homebot.config import PANDA_DATA
-PANDA_DATA = "/home/zhouzhiting/Data/panda_data"
-
 class PickAndPlaceEnv(BaseEnv):
     def __init__(
             self,
