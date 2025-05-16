@@ -8,30 +8,20 @@ _target_: agent.finetune.train_ppo_diffusion_agent.TrainPPOImgDiffusionAgent
 name: ${env_name}_ppo_diffusion_ta${horizon_steps}_td${denoising_steps}_tdf${ft_denoising_steps}
 logdir: ${oc.env:DPPO_LOG_DIR}/sapien-finetune/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
 base_policy_path: /data1/zhouzhiting/Data/dppo/pretrain/round1/policy_step_250000_seed_0.ckpt  ## 
-normalization_path: /data1/zhouzhiting/Data/dppo/pretrain/round1/norm_stats_1.pkl  ## add  TODO:change pkl read method
-
-# 环境数据路径
-asset_dir: /home/zhouzhiting/dppo_1/asset/mani_skill2_egad
-egad_train_set: ${asset_dir}/egad_train_set
-egad_train_set_coacd: ${asset_dir}/egad_train_set_coacd
-info_pick_train: ${asset_dir}/info_pick_train_v1.json
-
-# 机器人模型路径
-robot_dir: /home/zhouzhiting/dppo_1/asset/franka_panda
-robot_urdf: /home/zhouzhiting/dppo_1/asset/franka_panda/panda.urdf
+normalization_path: /data1/zhouzhiting/Data/dppo/pretrain/round1/norm_stats_1.pkl  ## TODO:change pkl read method
 
 seed: 42
 device: cuda:0
 env_name: pick_and_place_panda
-obs_dim: 10  # (2)  tcp_pose_trans(3+6) + gripper_width (1) , not 23
-action_dim: 10  # (3)  diffusion_policy   tcp_pose_trans(3+6) + gripper_width (1) , not 7
-denoising_steps: 50  # train 50 ? inference 10?
-ft_denoising_steps: 10  ## 100:5,
+obs_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1)
+action_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1) 
+denoising_steps: 50  
+ft_denoising_steps: 10  
 cond_steps: 1
-img_cond_steps: 1 # add
-horizon_steps: 4
-act_steps: 10 #(4) not 4
-use_ddim: True # add
+img_cond_steps: 1 
+horizon_steps: 20
+act_steps: 10
+use_ddim: True
 
 env:
   n_envs: 1
@@ -49,6 +39,17 @@ env:
   best_reward_threshold_for_success: 1.0
   record_video: false
   video_dir: /home/zhouzhiting/dppo_1/videos/pick_and_place
+  
+  # 环境数据路径
+  asset_dir: /home/zhouzhiting/dppo_1/asset/mani_skill2_egad
+  egad_train_set: ${asset_dir}/egad_train_set
+  egad_train_set_coacd: ${asset_dir}/egad_train_set_coacd
+  info_pick_train: ${asset_dir}/info_pick_train_v1.json
+
+  # 机器人模型路径
+  robot_dir: /home/zhouzhiting/dppo_1/asset/franka_panda
+  robot_urdf: /home/zhouzhiting/dppo_1/asset/franka_panda/panda.urdf
+
   # SAPIEN渲染器配置
   renderer:
     offscreen_only: True
@@ -80,31 +81,30 @@ env:
 shape_meta:
   obs:
     rgb:
-      shape: [3, 96, 96]  # 3 
+      shape: [3, 320, 240] 
     state:
       shape: [10]
   action: 
     shape: [10]
 
-# 启用wandb
 wandb:
   entity: "zhou-zt21-tsinghua-university"
   project: sapien-${env_name}-finetune
   run: ${now:%H-%M-%S}_${name}
 
 train:
-  n_train_itr: 1000  ## ???? 151
-  n_critic_warmup_itr: 0  ## ?? 2
+  n_train_itr: 1000  
+  n_critic_warmup_itr: 2 
   n_steps: 400
-  gamma: 0.99 # ft_ppo_diffusion_mlp_img 0.999 ?
-  augment: True # add
-  grad_accumulate: 15 # add 
-  actor_lr: 1e-4  # ft_ppo_diffusion_mlp_img 5e-5 ?
+  gamma: 0.999 
+  augment: True
+  grad_accumulate: 15
+  actor_lr: 5e-5
   actor_weight_decay: 0
   actor_lr_scheduler:
     first_cycle_steps: ${train.n_train_itr}
     warmup_steps: 10
-    min_lr: 1e-4  # ft_ppo_diffusion_mlp_img 5e-5 ?
+    min_lr: 5e-5
   critic_lr: 1e-3
   critic_weight_decay: 0
   critic_lr_scheduler:
@@ -120,9 +120,9 @@ train:
   reward_scale_running: True
   reward_scale_const: 1.0
   gae_lambda: 0.95
-  batch_size: 50000 # ft_ppo_diffusion_mlp_img 500
-  logprob_batch_size: 500 # add
-  update_epochs: 5 # ft_ppo_diffusion_mlp_img 10
+  batch_size: 500
+  logprob_batch_size: 500
+  update_epochs: 10
   vf_coef: 0.5
   target_kl: 1
 
@@ -131,29 +131,23 @@ model:
   # HP to tune
   gamma_denoising: 0.99
   clip_ploss_coef: 0.01
-  clip_ploss_coef_base: 0.01  # ft_ppo_diffusion_mlp_img 0.001
+  clip_ploss_coef_base: 0.001
   clip_ploss_coef_rate: 3
   randn_clip_value: 3
   min_sampling_denoising_std: 0.1
   min_logprob_denoising_std: 0.1
   #  
-  use_ddim: ${use_ddim} # add
-  ddim_steps: ${ft_denoising_steps} # add
-  ## must change into diffusion_policy cfg
+  use_ddim: ${use_ddim} 
+  ddim_steps: ${ft_denoising_steps} 
   network_path: ${base_policy_path}
   actor:
-    _target_: model.diffusion.mlp_diffusion.DiffusionMLP  ## x wrong
-    time_dim: 16
-    mlp_dims: [512, 512, 512]
-    # activation_type: ReLU
-    residual_style: True
-    img_cond_steps: ${img_cond_steps}
-    cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
-    horizon_steps: ${horizon_steps}
+    _target_: model.diffusion.diffusion_unet.DiffusionPolicy  
+    prediction_horizon: ${horizon_steps}
+    observation_horizont: ${cond_steps}
     action_dim: ${action_dim}
+    global_obs_dim: ${obs_dim}
+    num_inference_timesteps: ${ft_denoising_steps}
   critic:
-    # _target_: model.common.critic.CriticObs
-    # cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
     _target_: model.common.critic.ViTCritic
     spatial_emb: 128
     augment: False
