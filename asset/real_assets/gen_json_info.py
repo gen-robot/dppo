@@ -36,7 +36,11 @@ def create_json_info(model_dir, output_file):
     
     # allowed_dirs = {"along"} # v0 , along
     # allowed_dirs = {"column"}  # v1, column
-    allowed_dirs = {"side"}    # v2, side
+    # allowed_dirs = {"side"}    # v2, side
+    allowed_dirs = {"new"}
+    
+    # 记录新添加的模型数量
+    added_count = 0
 
     for dir_name in os.listdir(model_dir):
         if dir_name in allowed_dirs:
@@ -51,15 +55,22 @@ def create_json_info(model_dir, output_file):
                             continue
                         try:
                             info[model_id] = get_obj_info(glb_path, dir_name)
+                            added_count += 1
+                            print(f"Added model: {model_id}")
                         except Exception as e:
                             print(f"Processing {glb_path} failed: {e}")
     
-    with open(output_file, 'w') as f:
-        json.dump(info, f, indent=2)
+    # 只有当有新添加的模型时才更新文件
+    if added_count > 0:
+        with open(output_file, 'w') as f:
+            json.dump(info, f, indent=2)
+        print(f"Successfully added {added_count} new models to {output_file}")
+    else:
+        print(f"No new models to add to {output_file}")
     
 if __name__ == "__main__":
     model_dir = "./"
-    output_file = "info_pick_v2.json"
+    output_file = "info_pick_visual.json"
     create_json_info(model_dir, output_file)
 
 ## info_pick_v0.json: along

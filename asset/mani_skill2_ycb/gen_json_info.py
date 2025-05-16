@@ -31,8 +31,8 @@ def create_json_info(model_dir, output_file):
     info = {}
     
     # allowed_dirs = {"along"} # v0 
-    allowed_dirs = {"column"} # v1
-    # allowed_dirs = {"side", "tiny"} # v2, "box"
+    # allowed_dirs = {"column"} # v1
+    allowed_dirs = {"side"} # v2, "box", "tiny"
 
     for dir_name in os.listdir(model_dir):
         if dir_name in allowed_dirs:
@@ -54,7 +54,7 @@ def create_json_info(model_dir, output_file):
 
 if __name__ == "__main__":
     model_dir = "./models"
-    output_file = "info_pick_v1.json"
+    output_file = "info_pick_v2.json"
     create_json_info(model_dir, output_file)
 
 ## info_pick_v0.json: along
