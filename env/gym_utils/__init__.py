@@ -70,8 +70,8 @@ def make_async(
     """
 
     if env_type == "sapien":
-        from env.pick_and_place_panda import PickAndPlaceEnv
-        from env.gym_utils.wrapper.sapien_pick_and_place import SapienPickAndPlaceMultiStepWrapper
+        from env.pick_and_place_panda_real_rl import PickAndPlaceEnv
+        from env.gym_utils.wrapper.sapien_pick_and_place_real import SapienPickAndPlaceWrapper
         import torch
         
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -79,15 +79,18 @@ def make_async(
         env = PickAndPlaceEnv(
             use_gui=render,
             device=device,
-            obs_keys=("tcp_pose", "gripper_width", "robot_joints", "privileged_obs"),
-            action_relative="tool",
+            obs_keys=("tcp_pose", "gripper_width", "privileged_obs"),
+            use_image_obs=use_image_obs,
+            action_relative="none",
             domain_randomize=True,
             canonical=True
         )   
-        env = SapienPickAndPlaceMultiStepWrapper(
+        env = SapienPickAndPlaceWrapper(
                 env,
                 n_obs_steps=obs_steps,
                 n_action_steps=act_steps,
+                max_episode_steps=max_episode_steps,
+                normalization_path=normalization_path,
             )
         return env
 

@@ -3,8 +3,7 @@ from .robomimic_lowdim import RobomimicLowdimWrapper
 from .robomimic_image import RobomimicImageWrapper
 from .d3il_lowdim import D3ilLowdimWrapper
 from .mujoco_locomotion_lowdim import MujocoLocomotionLowdimWrapper
-from .sapien_env import SapienEnvWrapper
-from .sapien_pick_and_place import SapienPickAndPlaceMultiStepWrapper
+from .sapien_pick_and_place_real import SapienPickAndPlaceWrapper
 
 
 wrapper_dict = {
@@ -13,6 +12,5 @@ wrapper_dict = {
     "robomimic_image": RobomimicImageWrapper,
     "d3il_lowdim": D3ilLowdimWrapper,
     "mujoco_locomotion_lowdim": MujocoLocomotionLowdimWrapper,
-    "sapien": SapienEnvWrapper,
-    "sapien_pick_and_place": SapienPickAndPlaceMultiStepWrapper,
+    "sapien_pick_and_place_real": SapienPickAndPlaceWrapper,
 }

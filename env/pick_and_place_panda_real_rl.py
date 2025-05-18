@@ -38,6 +38,7 @@ class PickAndPlaceEnv(BaseEnv):
             device: str,
             mipmap_levels=1,
             obs_keys=tuple(),
+            use_image_obs=False,
             action_relative="tool",
             domain_randomize=True,
             canonical=True
@@ -48,6 +49,7 @@ class PickAndPlaceEnv(BaseEnv):
         self.finger_link_idxs: List[int] = None
         self.observation_dict: dict = {}
         self.obs_keys = obs_keys
+        self.use_image_obs = use_image_obs
         self.action_relative = action_relative
         self.expert_phase = 0
         self.domain_randomize = domain_randomize
@@ -650,11 +652,11 @@ class PickAndPlaceEnv(BaseEnv):
     # compute all the observations
     def _update_observation(self):
         self.observation_dict.clear()
-        image_obs = self.capture_images_new()
+        if self.use_image_obs:
+            image_obs = self.capture_images_new()
         world_tcp_pose = self._get_tcp_pose()
         tcp_pose = self.init_base_pose.inv().transform(self._get_tcp_pose())
         gripper_width = self._get_gripper_width()
-        # arm_joints = self.robot.get_qpos()[self.arm_controller.arm_joint_indices]
 
         obj_states = []
         # print(self.objs)
@@ -668,10 +670,10 @@ class PickAndPlaceEnv(BaseEnv):
             obj_states.append(obj_state)
         obj_states = np.array(obj_states)
 
-        self.observation_dict.update(image_obs)
+        if self.use_image_obs:
+            self.observation_dict.update(image_obs)
         self.observation_dict["tcp_pose"] = np.concatenate([tcp_pose.p, tcp_pose.q])
         self.observation_dict["gripper_width"] = gripper_width
-        # self.observation_dict["robot_joints"] = arm_joints
         self.observation_dict["privileged_obs"] = np.concatenate(
             [
                 world_tcp_pose.p,
@@ -690,10 +692,10 @@ class PickAndPlaceEnv(BaseEnv):
         world_tcp_pose = self._get_tcp_pose()
         tcp_pose = self.init_base_pose.inv().transform(self._get_tcp_pose())
         gripper_width = self._get_gripper_width()
-        arm_joints = self.robot.get_qpos()[self.arm_controller.arm_joint_indices]
+        # arm_joints = self.robot.get_qpos()[self.arm_controller.arm_joint_indices]
         obs["tcp_pose"] = np.concatenate([tcp_pose.p, tcp_pose.q])
         obs["gripper_width"] = gripper_width
-        obs["robot_joints"] = arm_joints
+        # obs["robot_joints"] = arm_joints
         obs["privileged_obs"] = np.concatenate(
             [
                 world_tcp_pose.p,
@@ -726,65 +728,6 @@ class PickAndPlaceEnv(BaseEnv):
         #             self.agv_link_idx = link_idx
         # link = self.robot.get_links()[self.agv_link_idx]
         # return link.get_pose()
-
-    def _desired_tcp_to_action(
-            self,
-            tcp_pose: sapien.Pose,
-            gripper_width: float,
-    ) -> np.ndarray:
-        assert self.action_relative != "none"
-
-        cur_tcp_pose = self._get_tcp_pose()
-        cur_relative_tcp_pose = self.init_base_pose.inv().transform(cur_tcp_pose)
-        desired_relative_tcp_pose = self.init_base_pose.inv().transform(tcp_pose)
-        # print("get tcp pose", cur_tcp_pose, "desired tcp pose", tcp_pose)
-        # relative to tool frame
-        if self.action_relative == "tool":
-            curtcp_T_desiredtcp = cur_relative_tcp_pose.inv().transform(
-                desired_relative_tcp_pose
-            )
-            delta_pos = (
-                    np.clip(curtcp_T_desiredtcp.p / self.p_scale, -1.0, 1.0)
-                    * self.p_scale
-            )
-            delta_euler = (
-                    np.clip(
-                        wrap_to_pi(quat2euler(curtcp_T_desiredtcp.q)) / self.rot_scale,
-                        -1.0,
-                        1.0,
-                    )
-                    * self.rot_scale
-            )
-        # relative to fixed frame
-        else:
-            delta_pos = (
-                    np.clip(
-                        (desired_relative_tcp_pose.p - cur_relative_tcp_pose.p)
-                        / self.p_scale,
-                        -1.0,
-                        1.0,
-                    )
-                    * self.p_scale
-            )
-            delta_euler = (
-                    np.clip(
-                        wrap_to_pi(
-                            quat2euler(desired_relative_tcp_pose.q)
-                            - quat2euler(cur_relative_tcp_pose.q)
-                        )
-                        / self.rot_scale,
-                        -1.0,
-                        1.0,
-                    )
-                    * self.rot_scale
-            )
-        return np.concatenate(
-            [
-                delta_pos,
-                delta_euler,
-                [gripper_width],
-            ]
-        )
 
     def _is_grasp(self, actor, threshold: float = 1e-4, both_finger=False):
         all_contact = self.scene.get_contacts()
