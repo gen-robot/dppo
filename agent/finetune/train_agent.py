@@ -41,9 +41,7 @@ class TrainAgent:
         self.env_name = cfg.env.name
         env_type = cfg.env.get("env_type", None)
         
-        # 处理SAPIEN环境
         if env_type == "sapien":
-            # 直接使用make_async创建环境
             self.venv = make_async(
                 cfg.env.name,
                 env_type=env_type,
@@ -51,14 +49,16 @@ class TrainAgent:
                 asynchronous=True,
                 max_episode_steps=cfg.env.max_episode_steps,
                 wrappers=cfg.env.get("wrappers", None),
+                shape_meta=cfg.get("shape_meta", None),
+                use_image_obs=cfg.env.get("use_image_obs", False),
                 render=cfg.env.get("render", False),
                 render_offscreen=cfg.env.get("save_video", False),
                 obs_dim=cfg.obs_dim,
                 action_dim=cfg.action_dim,
+                normalization_path=cfg.env.get("normalization_path", None),
                 **cfg.env.specific if "specific" in cfg.env else {},
             )
         else:
-            # 其他环境的处理方式
             self.venv = make_async(
                 cfg.env.name,
                 env_type=env_type,
@@ -77,8 +77,9 @@ class TrainAgent:
             )
             
         if not env_type == "furniture":
-            self.venv.seed(self.seed)  # 使用单个种子值
-            # isaacgym environments do not need seeding
+            self.venv.seed(
+                [self.seed + i for i in range(cfg.env.n_envs)]
+            )  # otherwise parallel envs might have the same initial states!
         self.n_envs = cfg.env.n_envs
         self.n_cond_step = cfg.cond_steps
         self.obs_dim = cfg.obs_dim

@@ -87,6 +87,9 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
             reward_trajs = np.zeros((self.n_steps, self.n_envs))
 
             # Collect a set of trajectories from env
+            env_step_time = 0.0
+            network_update_time = 0.0
+
             for step in range(self.n_steps):
                 if step % 10 == 0:
                     print(f"Processed step {step} of {self.n_steps}")
@@ -113,9 +116,15 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 action_venv = output_venv[:, : self.act_steps]
 
                 # Apply multi-step action
+                import time
+                step_start = time.time()
+                  # obj successfully placed
+                success_trajs = np.zeros((self.n_steps, self.n_envs))  
+
                 obs_venv, reward_venv, terminated_venv, truncated_venv, info_venv = (
                     self.venv.step(action_venv)
                 )
+                env_step_time += time.time() - step_start
                 done_venv = terminated_venv | truncated_venv
                 for k in obs_trajs:
                     obs_trajs[k][step] = prev_obs_venv[k]
@@ -123,6 +132,13 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 reward_trajs[step] = reward_venv
                 terminated_trajs[step] = terminated_venv
                 firsts_trajs[step + 1] = done_venv
+
+                if "is_success" in info_venv:
+                    success_info = np.array([info["is_success"] for info in info_venv])
+                    # 如果是多步执行，取最大值(任一步成功即视为成功)
+                    success_trajs[step] = np.any(success_info, axis=1) if success_info.ndim > 1 else success_info
+                else:
+                    assert False, "No success info in the environment step"
 
                 # update for next step
                 prev_obs_venv = obs_venv
@@ -134,16 +150,29 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
             episodes_start_end = []
             for env_ind in range(self.n_envs):
                 env_steps = np.where(firsts_trajs[:, env_ind] == 1)[0]
+                log.info(f"Environment {env_ind} first steps: {env_steps}")
                 for i in range(len(env_steps) - 1):
                     start = env_steps[i]
                     end = env_steps[i + 1]
                     if end - start > 1:
                         episodes_start_end.append((env_ind, start, end - 1))
+                        log.info(f"Found episode: env={env_ind}, start={start}, end={end-1}")
+
+            log.info(f"Total episodes found: {len(episodes_start_end)}")
+            log.info(f"Firsts trajs shape: {firsts_trajs.shape}")
+            log.info(f"Firsts trajs sum: {np.sum(firsts_trajs)}")
+
             if len(episodes_start_end) > 0:
                 reward_trajs_split = [
                     reward_trajs[start : end + 1, env_ind]
                     for env_ind, start, end in episodes_start_end
                 ]
+                # add success trajs
+                success_trajs_split = [
+                    success_trajs[start : end + 1, env_ind]
+                    for env_ind, start, end in episodes_start_end
+                ]
+
                 num_episode_finished = len(reward_trajs_split)
                 episode_reward = np.array(
                     [np.sum(reward_traj) for reward_traj in reward_trajs_split]
@@ -154,6 +183,16 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                         for reward_traj in reward_trajs_split
                     ]
                 )
+
+                episode_grasp_success = np.array(
+                    [np.any(success_traj) for success_traj in success_trajs_split]
+                )                
+                episode_grasp_success_rate = np.array(
+                    [np.mean(success_traj) for success_traj in success_trajs_split]
+                )
+                grasp_success_rate = np.mean(episode_grasp_success)
+                avg_grasp_success_rate = np.mean(episode_grasp_success_rate)
+                
                 avg_episode_reward = np.mean(episode_reward)
                 avg_best_reward = np.mean(episode_best_reward)
                 success_rate = np.mean(
@@ -165,10 +204,13 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 avg_episode_reward = 0
                 avg_best_reward = 0
                 success_rate = 0
+                grasp_success_rate = 0
+                avg_grasp_success_rate = 0
                 log.info("[WARNING] No episode completed within the iteration!")
 
             # Update models
             if not eval_mode:
+                update_start = time.time()
                 with torch.no_grad():
                     # apply image randomization
                     obs_trajs["rgb"] = (
@@ -394,7 +436,7 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 explained_var = (
                     np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
                 )
-
+                network_update_time = time.time() - update_start
             # Update lr, min_sampling_std
             if self.itr >= self.n_critic_warmup_itr:
                 self.actor_lr_scheduler.step()
@@ -426,6 +468,8 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                         wandb.log(
                             {
                                 "success rate - eval": success_rate,
+                                "grasp success rate - eval": grasp_success_rate,
+                                "avg grasp success rate - eval": avg_grasp_success_rate,
                                 "avg episode reward - eval": avg_episode_reward,
                                 "avg best reward - eval": avg_best_reward,
                                 "num episode - eval": num_episode_finished,
@@ -442,8 +486,18 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                     )
                     if self.use_wandb:
                         wandb.log(
-                            {
+                            {   "env_step_time": env_step_time,
+                                "network_update_time": network_update_time,
+                                "total_time": env_step_time + network_update_time,
                                 "total env step": cnt_train_step,
+
+                                "success rate - train": success_rate,
+                                "grasp success rate - train": grasp_success_rate,
+                                "avg grasp success rate - train": avg_grasp_success_rate,
+                                "avg episode reward - train": avg_episode_reward,
+                                "avg best reward - train": avg_best_reward,
+                                "num episode - train": num_episode_finished,
+
                                 "loss": loss,
                                 "pg loss": pg_loss,
                                 "value loss": v_loss,
@@ -453,8 +507,6 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                                 "ratio": ratio,
                                 "clipfrac": np.mean(clipfracs),
                                 "explained variance": explained_var,
-                                "avg episode reward - train": avg_episode_reward,
-                                "num episode - train": num_episode_finished,
                                 "diffusion - min sampling std": diffusion_min_sampling_std,
                                 "actor lr": self.actor_optimizer.param_groups[0]["lr"],
                                 "critic lr": self.critic_optimizer.param_groups[0][
