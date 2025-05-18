@@ -27,61 +27,19 @@ env:
   n_envs: 1
   name: ${env_name}
   env_type: "sapien"
-  max_episode_steps: 200
-  reset_at_iteration: False
+  max_episode_steps: 300
   save_video: False
-  use_image_obs: True  # add
-
-  render: False  #?
-  render_mode: "rgb_array"
-  render_width: 128 #?
-  render_height: 128 #?
+  render: False  
   best_reward_threshold_for_success: 1.0
-  record_video: false
-  video_dir: /home/zhouzhiting/dppo_1/videos/pick_and_place
-  
-  # 环境数据路径
-  asset_dir: /home/zhouzhiting/dppo_1/asset/mani_skill2_egad
-  egad_train_set: ${asset_dir}/egad_train_set
-  egad_train_set_coacd: ${asset_dir}/egad_train_set_coacd
-  info_pick_train: ${asset_dir}/info_pick_train_v1.json
-
-  # 机器人模型路径
-  robot_dir: /home/zhouzhiting/dppo_1/asset/franka_panda
-  robot_urdf: /home/zhouzhiting/dppo_1/asset/franka_panda/panda.urdf
-
-  # SAPIEN渲染器配置
-  renderer:
-    offscreen_only: True
-    max_num_materials: 5000
-    max_num_textures: 5000
-    default_mipmap_levels: 1
-    device: 'cuda'
-    culling: 'back'
-    do_not_load_texture: False
-  # 环境数据配置
-  asset_config:
-    asset_dir: ${asset_dir}
-    egad_train_set: ${egad_train_set}
-    egad_train_set_coacd: ${egad_train_set_coacd}
-    info_pick_train: ${info_pick_train}
-    robot_dir: ${robot_dir}
-    robot_urdf: ${robot_urdf}
-  wrappers:
-    sapien_pick_and_place:
-      normalization_path: ${normalization_path}  # (5)
-      max_episode_steps: ${env.max_episode_steps}
-      reward_scale: 0.1
-    multi_step:
-      n_obs_steps: ${cond_steps}
-      n_action_steps: ${act_steps}
-      max_episode_steps: ${env.max_episode_steps}
-      reset_within_step: True
+  video_dir: /home/zhouzhiting/dppo/videos/pick_and_place
+  use_image_obs: True
+  reset_at_iteration: True  # mixture obj? single obj?
+  normalization_path: ${normalization_path} 
 
 shape_meta:
   obs:
     rgb:
-      shape: [3, 320, 240] 
+      shape: [3, 224, 224] 
     state:
       shape: [10]
   action: 
