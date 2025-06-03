@@ -79,7 +79,7 @@ def make_async(
         env = PickAndPlaceEnv(
             use_gui=render,
             device=device,
-            obs_keys=("tcp_pose", "gripper_width", "privileged_obs"),
+            obs_keys=("tcp_pose", "gripper_width", "privileged_obs", "third-rgb"),
             use_image_obs=use_image_obs,
             action_relative="none",
             domain_randomize=True,
