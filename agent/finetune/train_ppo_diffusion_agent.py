@@ -11,8 +11,6 @@ import torch
 import logging
 import wandb
 import math
-import collections
-import time
 
 log = logging.getLogger(__name__)
 from util.timer import Timer
@@ -45,51 +43,6 @@ class TrainPPODiffusionAgent(TrainPPOAgent):
                 warmup_steps=cfg.train.eta_lr_scheduler.warmup_steps,
                 gamma=1.0,
             )
-
-    def get_state(self, obs):
-        if isinstance(obs, tuple):
-            obs_dict = obs[0]
-        else:
-            obs_dict = obs
-
-        if isinstance(obs_dict, collections.OrderedDict) or isinstance(obs_dict, dict):
-            if "state" in obs_dict:
-                state = np.array(obs_dict["state"])
-                # 确保状态是2D数组 [batch_size, state_dim]
-                if len(state.shape) == 1:
-                    state = state.reshape(1, -1)
-                return state
-            else:
-                # 如果没有state键，将所有观察值连接起来
-                state_values = []
-                for key, value in obs_dict.items():
-                    if isinstance(value, np.ndarray):
-                        state_values.append(value.flatten())
-                    elif np.isscalar(value):
-                        state_values.append(np.array([value]))
-                    else:
-                        try:
-                            value_array = np.array(value)
-                            state_values.append(value_array.flatten())
-                        except:
-                            print(f"Warning: Could not convert {key} to numpy array")
-                state = np.concatenate(state_values)
-                # 确保状态是2D数组 [batch_size, state_dim]
-                if len(state.shape) == 1:
-                    state = state.reshape(1, -1)
-                return state
-        else:
-            # 如果不是字典类型，尝试直接转换为numpy数组
-            try:
-                state = np.array(obs_dict)
-                # 确保状态是2D数组 [batch_size, state_dim]
-                if len(state.shape) == 1:
-                    state = state.reshape(1, -1)
-                return state
-            except:
-                print("Warning: Could not convert observation to numpy array")
-                # 返回一个零向量作为默认值，确保维度正确
-                return np.zeros((1, self.obs_dim))
 
     def run(self):
         # Start training loop
@@ -141,76 +94,20 @@ class TrainPPODiffusionAgent(TrainPPOAgent):
             if self.save_full_observations:  # state-only
                 obs_full_trajs = np.empty((0, self.n_envs, self.obs_dim))
                 obs_full_trajs = np.vstack(
-                    (obs_full_trajs, self.get_state(prev_obs_venv)[:, -1][None])
+                    (obs_full_trajs, prev_obs_venv["state"][:, -1][None])
                 )
 
             # Collect a set of trajectories from env
-            env_step_time = 0.0
-            network_update_time = 0.0
-            
             for step in range(self.n_steps):
                 if step % 10 == 0:
                     print(f"Processed step {step} of {self.n_steps}")
 
                 # Select action
                 with torch.no_grad():
-                    # 处理SAPIEN环境的观察值
-                    if isinstance(prev_obs_venv, tuple):
-                        # 如果是元组，第一个元素是观察值，第二个元素是信息
-                        obs_dict = prev_obs_venv[0]
-                        if isinstance(obs_dict, collections.OrderedDict):
-                            # 如果是OrderedDict，将所有观察值连接起来
-                            state_values = []
-                            for key, value in obs_dict.items():
-                                if isinstance(value, np.ndarray):
-                                    state_values.append(value.flatten())
-                                elif np.isscalar(value):
-                                    state_values.append(np.array([value]))
-                                else:
-                                    # 处理其他类型的值
-                                    try:
-                                        value_array = np.array(value)
-                                        state_values.append(value_array.flatten())
-                                    except:
-                                        print(f"Warning: Could not convert {key} to numpy array")
-                            obs_trajs["state"][step] = np.concatenate(state_values)
-                        else:
-                            # 如果不是OrderedDict，直接使用第一个元素
-                            obs_trajs["state"][step] = obs_dict
-                    elif isinstance(prev_obs_venv, (collections.OrderedDict, dict)):
-                        # 如果是OrderedDict或dict类型，需要提取状态值
-                        if "state" in prev_obs_venv:
-                            # 确保state是numpy数组
-                            state = prev_obs_venv["state"]
-                            if not isinstance(state, np.ndarray):
-                                state = np.array(state)
-                            obs_trajs["state"][step] = state
-                        else:
-                            # 如果没有state键，尝试将所有观察值连接起来
-                            state_values = []
-                            for key, value in prev_obs_venv.items():
-                                if isinstance(value, np.ndarray):
-                                    state_values.append(value.flatten())
-                                elif np.isscalar(value):
-                                    state_values.append(np.array([value]))
-                                else:
-                                    # 处理其他类型的值
-                                    try:
-                                        value_array = np.array(value)
-                                        state_values.append(value_array.flatten())
-                                    except:
-                                        print(f"Warning: Could not convert {key} to numpy array")
-                            obs_trajs["state"][step] = np.concatenate(state_values)
-                    else:
-                        # 处理其他类型的观察值
-                        try:
-                            obs_trajs["state"][step] = self.get_state(prev_obs_venv)
-                        except:
-                            print(f"Warning: Could not convert observation to numpy array")
-                            # 提供一个默认值
-                            obs_trajs["state"][step] = np.zeros(self.obs_dim)
                     cond = {
-                        "state": torch.from_numpy(obs_trajs["state"][step]).float().to(self.device)
+                        "state": torch.from_numpy(prev_obs_venv["state"])
+                        .float()
+                        .to(self.device)
                     }
                     samples = self.model(
                         cond=cond,
@@ -226,8 +123,6 @@ class TrainPPODiffusionAgent(TrainPPOAgent):
                 action_venv = output_venv[:, : self.act_steps]
 
                 # Apply multi-step action
-                import time
-                step_start = time.time()
                 (
                     obs_venv,
                     reward_venv,
@@ -235,21 +130,7 @@ class TrainPPODiffusionAgent(TrainPPOAgent):
                     truncated_venv,
                     info_venv,
                 ) = self.venv.step(action_venv)
-                env_step_time += time.time() - step_start
                 done_venv = terminated_venv | truncated_venv
-                
-                # 每50步打印一次调试信息
-                #if step % 50 == 0:
-                    #print(f"\nStep {step}:")
-                    #print(f"Action shape: {action_venv.shape}")
-                    #print(f"Raw Reward: {reward_venv}")
-                    #print(f"Reward scale const: {self.reward_scale_const}")
-                    #print(f"Scaled Reward: {reward_venv * self.reward_scale_const}")
-                    #print(f"Terminated: {terminated_venv}")
-                    #print(f"Truncated: {truncated_venv}")
-                    #print(f"Done: {done_venv}")
-                    #print(f"Firsts trajs: {firsts_trajs[step]}")
-                
                 if self.save_full_observations:  # state-only
                     obs_full_venv = np.array(
                         [info["full_obs"]["state"] for info in info_venv]
@@ -257,61 +138,7 @@ class TrainPPODiffusionAgent(TrainPPOAgent):
                     obs_full_trajs = np.vstack(
                         (obs_full_trajs, obs_full_venv.transpose(1, 0, 2))
                     )
-                # 更新观察值存储
-                if isinstance(prev_obs_venv, tuple):
-                    # 如果是元组，第一个元素是观察值，第二个元素是信息
-                    obs_dict = prev_obs_venv[0]
-                    if isinstance(obs_dict, collections.OrderedDict):
-                        # 如果是OrderedDict，将所有观察值连接起来
-                        state_values = []
-                        for key, value in obs_dict.items():
-                            if isinstance(value, np.ndarray):
-                                state_values.append(value.flatten())
-                            elif np.isscalar(value):
-                                state_values.append(np.array([value]))
-                            else:
-                                # 处理其他类型的值
-                                try:
-                                    value_array = np.array(value)
-                                    state_values.append(value_array.flatten())
-                                except:
-                                    print(f"Warning: Could not convert {key} to numpy array")
-                        obs_trajs["state"][step] = np.concatenate(state_values)
-                    else:
-                        # 如果不是OrderedDict，直接使用第一个元素
-                        obs_trajs["state"][step] = obs_dict
-                elif isinstance(prev_obs_venv, (collections.OrderedDict, dict)):
-                    # 如果是OrderedDict或dict类型，需要提取状态值
-                    if "state" in prev_obs_venv:
-                        # 确保state是numpy数组
-                        state = prev_obs_venv["state"]
-                        if not isinstance(state, np.ndarray):
-                            state = np.array(state)
-                        obs_trajs["state"][step] = state
-                    else:
-                        # 如果没有state键，尝试将所有观察值连接起来
-                        state_values = []
-                        for key, value in prev_obs_venv.items():
-                            if isinstance(value, np.ndarray):
-                                state_values.append(value.flatten())
-                            elif np.isscalar(value):
-                                state_values.append(np.array([value]))
-                            else:
-                                # 处理其他类型的值
-                                try:
-                                    value_array = np.array(value)
-                                    state_values.append(value_array.flatten())
-                                except:
-                                    print(f"Warning: Could not convert {key} to numpy array")
-                        obs_trajs["state"][step] = np.concatenate(state_values)
-                else:
-                    # 处理其他类型的观察值
-                    try:
-                        obs_trajs["state"][step] = self.get_state(prev_obs_venv)
-                    except:
-                        print(f"Warning: Could not convert observation to numpy array")
-                        # 提供一个默认值
-                        obs_trajs["state"][step] = np.zeros(self.obs_dim)
+                obs_trajs["state"][step] = prev_obs_venv["state"]
                 chains_trajs[step] = chains_venv
                 reward_trajs[step] = reward_venv
                 terminated_trajs[step] = terminated_venv
@@ -323,22 +150,15 @@ class TrainPPODiffusionAgent(TrainPPOAgent):
                 # count steps --- not acounting for done within action chunk
                 cnt_train_step += self.n_envs * self.act_steps if not eval_mode else 0
 
-            # 计算episode的开始和结束
+            # Summarize episode reward --- this needs to be handled differently depending on whether the environment is reset after each iteration. Only count episodes that finish within the iteration.
             episodes_start_end = []
             for env_ind in range(self.n_envs):
                 env_steps = np.where(firsts_trajs[:, env_ind] == 1)[0]
-                log.info(f"Environment {env_ind} first steps: {env_steps}")
                 for i in range(len(env_steps) - 1):
                     start = env_steps[i]
                     end = env_steps[i + 1]
                     if end - start > 1:
                         episodes_start_end.append((env_ind, start, end - 1))
-                        log.info(f"Found episode: env={env_ind}, start={start}, end={end-1}")
-            
-            log.info(f"Total episodes found: {len(episodes_start_end)}")
-            log.info(f"Firsts trajs shape: {firsts_trajs.shape}")
-            log.info(f"Firsts trajs sum: {np.sum(firsts_trajs)}")
-            
             if len(episodes_start_end) > 0:
                 reward_trajs_split = [
                     reward_trajs[start : end + 1, env_ind]
@@ -361,14 +181,19 @@ class TrainPPODiffusionAgent(TrainPPOAgent):
                     )
                 avg_episode_reward = np.mean(episode_reward)
                 avg_best_reward = np.mean(episode_best_reward)
-                success_rate = info_venv.get("success_rate", 0.0)
+                success_rate = np.mean(
+                    episode_best_reward >= self.best_reward_threshold_for_success
+                )
             else:
+                episode_reward = np.array([])
                 num_episode_finished = 0
+                avg_episode_reward = 0
+                avg_best_reward = 0
+                success_rate = 0
                 log.info("[WARNING] No episode completed within the iteration!")
 
             # Update models
             if not eval_mode:
-                update_start = time.time()
                 with torch.no_grad():
                     obs_trajs["state"] = (
                         torch.from_numpy(obs_trajs["state"]).float().to(self.device)
@@ -422,10 +247,10 @@ class TrainPPODiffusionAgent(TrainPPOAgent):
                         reward_trajs = reward_trajs_transpose.T
 
                     # bootstrap value with GAE if not terminal - apply reward scaling with constant if specified
-                    state = self.get_state(obs_venv)
-                    
                     obs_venv_ts = {
-                        "state": torch.from_numpy(state).float().to(self.device)
+                        "state": torch.from_numpy(obs_venv["state"])
+                        .float()
+                        .to(self.device)
                     }
                     advantages_trajs = np.zeros_like(reward_trajs)
                     lastgaelam = 0
@@ -564,20 +389,6 @@ class TrainPPODiffusionAgent(TrainPPOAgent):
                     np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
                 )
 
-                # 每50步打印一次奖励统计信息
-                #if step % 50 == 0:
-                    #print(f"\nReward Statistics:")
-                    #print(f"Reward trajs shape: {reward_trajs.shape}")
-                    #print(f"Raw Reward trajs mean: {np.mean(reward_trajs)}")
-                    #print(f"Raw Reward trajs max: {np.max(reward_trajs)}")
-                    #print(f"Raw Reward trajs min: {np.min(reward_trajs)}")
-                    #if self.reward_scale_running:
-                    #print(f"Running reward scaler stats:")
-                    #print(f"Mean: {self.running_reward_scaler.mean}")
-                    #print(f"Var: {self.running_reward_scaler.var}")
-
-                network_update_time = time.time() - update_start
-
             # Plot state trajectories (only in D3IL)
             if (
                 self.itr % self.render_freq == 0
@@ -603,19 +414,7 @@ class TrainPPODiffusionAgent(TrainPPOAgent):
 
             # Save model
             if self.itr % self.save_model_freq == 0 or self.itr == self.n_train_itr - 1:
-                # 在保存模型时启用视频录制
-                if hasattr(self.venv, 'envs'):
-                    for env_ind in range(self.n_envs):
-                        self.venv.envs[env_ind].env.record_video = True
-                else:
-                    self.venv.env.record_video = True
                 self.save_model()
-                # 保存完模型后关闭视频录制
-                if hasattr(self.venv, 'envs'):
-                    for env_ind in range(self.n_envs):
-                        self.venv.envs[env_ind].env.record_video = False
-                else:
-                    self.venv.env.record_video = False
 
             # Log loss and save metrics
             run_results.append(
@@ -656,9 +455,7 @@ class TrainPPODiffusionAgent(TrainPPOAgent):
                     )
                     if self.use_wandb:
                         wandb.log(
-                            {   "env_step_time": env_step_time,
-                                "network_update_time": network_update_time,
-                                "total_time": env_step_time + network_update_time,
+                            {
                                 "total env step": cnt_train_step,
                                 "loss": loss,
                                 "pg loss": pg_loss,
