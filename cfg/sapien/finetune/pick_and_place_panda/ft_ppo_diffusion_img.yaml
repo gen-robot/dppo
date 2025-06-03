@@ -3,16 +3,16 @@ defaults:
 hydra:
   run:
     dir: ${logdir}
-_target_: agent.finetune.train_ppo_diffusion_agent.TrainPPOImgDiffusionAgent  
+_target_: agent.finetune.train_ppo_diffusion_img_agent.TrainPPOImgDiffusionAgent  
 
 name: ${env_name}_ppo_diffusion_ta${horizon_steps}_td${denoising_steps}_tdf${ft_denoising_steps}
-logdir: ${oc.env:DPPO_LOG_DIR}/sapien-finetune/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
-base_policy_path: /data1/zhouzhiting/Data/dppo/pretrain/round1/policy_step_250000_seed_0.ckpt  ## 
-normalization_path: /data1/zhouzhiting/Data/dppo/pretrain/round1/norm_stats_1.pkl  ## TODO:change pkl read method
+logdir: /home/zhouzhiting/Projects/dppo/sapien-finetune/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
+base_policy_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/cano_2/policy_step_254000_seed_0.ckpt  
+normalization_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/cano_2/norm_stats_1.pkl  
 
 seed: 42
 device: cuda:0
-env_name: pick_and_place_panda
+env_name: pick_and_place
 obs_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1)
 action_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1) 
 denoising_steps: 50  
@@ -27,14 +27,15 @@ env:
   n_envs: 1
   name: ${env_name}
   env_type: "sapien"
-  max_episode_steps: 300
+  max_episode_steps: 400
   save_video: False
   render: False  
   best_reward_threshold_for_success: 1.0
   video_dir: /home/zhouzhiting/dppo/videos/pick_and_place
   use_image_obs: True
   reset_at_iteration: True  # mixture obj? single obj?
-  normalization_path: ${normalization_path} 
+  normalization_path: ${normalization_path}
+  act_steps: ${act_steps}  
 
 shape_meta:
   obs:
@@ -47,8 +48,9 @@ shape_meta:
 
 wandb:
   entity: "zhou-zt21-tsinghua-university"
-  project: sapien-${env_name}-finetune
+  project: dppo-sapien-${env_name}
   run: ${now:%H-%M-%S}_${name}
+  mode: "offline"  # "online" or "offline"
 
 train:
   n_train_itr: 1000  
@@ -98,10 +100,18 @@ model:
   use_ddim: ${use_ddim} 
   ddim_steps: ${ft_denoising_steps} 
   network_path: ${base_policy_path}
+  eta:
+    base_eta: 1
+    input_dim: ${obs_dim}
+    mlp_dims: [256, 256]
+    action_dim: ${action_dim}
+    min_eta: 0.1
+    max_eta: 1.0
+    _target_: model.diffusion.eta.EtaFixed
   actor:
     _target_: model.diffusion.diffusion_unet.DiffusionPolicy  
     prediction_horizon: ${horizon_steps}
-    observation_horizont: ${cond_steps}
+    observation_horizon: ${cond_steps}
     action_dim: ${action_dim}
     global_obs_dim: ${obs_dim}
     num_inference_timesteps: ${ft_denoising_steps}
