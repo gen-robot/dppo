@@ -35,6 +35,7 @@ class TrainAgent:
                 project=cfg.wandb.project,
                 name=cfg.wandb.run,
                 config=OmegaConf.to_container(cfg, resolve=True),
+                mode=cfg.wandb.mode,
             )
 
         # Make vectorized env
@@ -48,11 +49,12 @@ class TrainAgent:
                 num_envs=cfg.env.n_envs,
                 asynchronous=True,
                 max_episode_steps=cfg.env.max_episode_steps,
+                record=cfg.env.record,
                 wrappers=cfg.env.get("wrappers", None),
                 shape_meta=cfg.get("shape_meta", None),
                 use_image_obs=cfg.env.get("use_image_obs", False),
                 render=cfg.env.get("render", False),
-                render_offscreen=cfg.env.get("save_video", False),
+                act_steps=cfg.env.act_steps,
                 obs_dim=cfg.obs_dim,
                 action_dim=cfg.action_dim,
                 normalization_path=cfg.env.get("normalization_path", None),
