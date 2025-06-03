@@ -633,10 +633,17 @@ class PickAndPlaceEnv(BaseEnv):
 
         ## only one actor
         is_success = self._is_success(actor)
+        approach_reward = self._reward_approach_obj(actor, pre_pose)
+        lift_reward = self._reward_lift_obj(actor, pre_pose)
+        move_reward = self._reward_move_obj(actor, pre_pose)
+        # print("approach_reward", approach_reward, 
+        #       "lift_reward", lift_reward, 
+        #       "move_reward", move_reward,
+        #       "is_success", is_success,)
         reward = (
-                self._reward_approach_obj(actor, pre_pose)
-                + self._reward_lift_obj(actor, pre_pose)
-                + self._reward_move_obj(actor, pre_pose)
+                approach_reward #self._reward_approach_obj(actor, pre_pose)
+                + lift_reward #self._reward_lift_obj(actor, pre_pose)
+                + move_reward #self._reward_move_obj(actor, pre_pose)
                 # + self._reward_grasp_and_move(actor, pre_pose)
                 - 0.01 * (not control_success)
                 + 1. * is_success
@@ -775,7 +782,7 @@ class PickAndPlaceEnv(BaseEnv):
         cur_desired_p = np.concatenate([obj_pose.p[:2], [cur_desired_z]], axis=0)
         pre_desired_p = np.concatenate([pre_pose["obj"].p[:2], [pre_desired_z]], axis=0)
 
-        # print(obj_pose.p, tcp_pose.p, cur_desired_p)
+        # print("obj_pose.p",obj_pose.p, "tcp_pose.p", tcp_pose.p, "cur_desired_p", cur_desired_p)
         # print(quat2euler(obj_pose.q), quat2euler(tcp_pose.q))
 
         cur_dist = np.linalg.norm(tcp_pose.p - cur_desired_p)
@@ -796,6 +803,7 @@ class PickAndPlaceEnv(BaseEnv):
             cur_z_dist = abs(obj_pose.p[-1] - 0.9) + abs(obj_pose.p[-1] - 1.0)
             pre_z_dist = abs(pre_pose["obj"].p[-1] - 0.9) + abs(pre_pose["obj"].p[-1] - 1.0)
             z_reward = pre_z_dist - cur_z_dist
+        # print("cur_z_dist", cur_z_dist)
         return z_reward * 5
 
     def _reward_move_obj(self, actor, pre_pose):
