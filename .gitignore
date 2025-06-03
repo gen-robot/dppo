@@ -145,3 +145,8 @@ dmypy.json
 cfg/robomimic/*.sh
 
 *.out
+
+### debug
+tmp
+sapien-finetune
+video
