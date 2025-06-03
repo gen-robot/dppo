@@ -28,7 +28,7 @@ env:
   name: ${env_name}
   env_type: "sapien"
   max_episode_steps: 400
-  save_video: False
+  record: False
   render: False  
   best_reward_threshold_for_success: 1.0
   video_dir: /home/zhouzhiting/dppo/videos/pick_and_place
