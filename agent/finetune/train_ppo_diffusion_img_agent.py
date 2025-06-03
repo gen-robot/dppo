@@ -14,7 +14,7 @@ import math
 
 log = logging.getLogger(__name__)
 from util.timer import Timer
-from agent.finetune.train_ppo_diffusion_agent import TrainPPODiffusionAgent
+from Projects.dppo.agent.finetune.train_ppo_diffusion_agent import TrainPPODiffusionAgent
 from model.common.modules import RandomShiftsAug
 
 
@@ -52,6 +52,16 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                     options_venv[env_ind]["video_path"] = os.path.join(
                         self.render_dir, f"itr-{self.itr}_trial-{env_ind}.mp4"
                     )
+            
+            ## add record in sapien env
+            if self.venv.record:
+                import imageio
+                video_writer = {"third": imageio.get_writer(
+                    os.path.join( self.render_dir, f"itr-{self.itr}_trial-{env_ind}.mp4"),
+                    fps=20,
+                    format="FFMPEG",
+                    codec="h264",
+                ) }
 
             # Define train or eval - all envs restart
             eval_mode = self.itr % self.val_freq == 0 and not self.force_train
@@ -93,6 +103,8 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
             for step in range(self.n_steps):
                 if step % 10 == 0:
                     print(f"Processed step {step} of {self.n_steps}")
+                else:
+                    continue
 
                 # Select action
                 with torch.no_grad():
@@ -120,8 +132,8 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 step_start = time.time()
                   # obj successfully placed
                 success_trajs = np.zeros((self.n_steps, self.n_envs))  
-
-                obs_venv, reward_venv, terminated_venv, truncated_venv, info_venv = (
+                ## record_list only exists in sapien env
+                obs_venv, reward_venv, terminated_venv, truncated_venv, info_venv, record_list = (
                     self.venv.step(action_venv)
                 )
                 env_step_time += time.time() - step_start
@@ -132,11 +144,14 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 reward_trajs[step] = reward_venv
                 terminated_trajs[step] = terminated_venv
                 firsts_trajs[step + 1] = done_venv
-
+                ### record in sapien env
+                if self.venv.record:
+                    for i, record in enumerate(record_list):
+                        video_writer["third"].append_data(record)
+        
                 if "is_success" in info_venv:
-                    success_info = np.array([info["is_success"] for info in info_venv])
-                    # 如果是多步执行，取最大值(任一步成功即视为成功)
-                    success_trajs[step] = np.any(success_info, axis=1) if success_info.ndim > 1 else success_info
+                    #  [1, act_steps]
+                    success_trajs[step] = np.any(info_venv["is_success"], axis=1) 
                 else:
                     assert False, "No success info in the environment step"
 
@@ -145,7 +160,11 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
 
                 # count steps --- not acounting for done within action chunk
                 cnt_train_step += self.n_envs * self.act_steps if not eval_mode else 0
-
+            ### record in sapien env
+            if self.venv.record:
+                for writer in video_writer.values():
+                    writer.close()
+                
             # Summarize episode reward --- this needs to be handled differently depending on whether the environment is reset after each iteration. Only count episodes that finish within the iteration.
             episodes_start_end = []
             for env_ind in range(self.n_envs):
