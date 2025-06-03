@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from torchvision import models as vision_models
 from torchvision import transforms
 
-import diffusion_policy.utils.tensor_utils as TensorUtils
+import model.common.tensor_utils as TensorUtils
 
 CONV_ACTIVATIONS = {
     "relu": nn.ReLU,
