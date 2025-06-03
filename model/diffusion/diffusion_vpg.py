@@ -186,9 +186,9 @@ class VPGDiffusion(DiffusionModel):
             x_recon = noise
         if self.denoised_clip_value is not None:
             x_recon.clamp_(-self.denoised_clip_value, self.denoised_clip_value)
-            if self.use_ddim:
-                # re-calculate noise based on clamped x_recon - default to false in HF, but let's use it here
-                noise = (x - alpha ** (0.5) * x_recon) / sqrt_one_minus_alpha
+            # if self.use_ddim:
+            #     # re-calculate noise based on clamped x_recon - default to false in HF, but let's use it here
+            #     noise = (x - alpha ** (0.5) * x_recon) / sqrt_one_minus_alpha
 
         # Clip epsilon for numerical stability in policy gradient - not sure if this is helpful yet, but the value can be huge sometimes. This has no effect if DDPM is used
         if self.use_ddim and self.eps_clip_value is not None:
