@@ -78,8 +78,10 @@ class DiffusionModel(nn.Module):
             checkpoint = torch.load(
                 network_path, map_location=device, weights_only=True
             )
+            ## only support diffusion_unet Class DiffusionPolicy
             self.network.deserialize(checkpoint)
 
+            ## other networks
             # if "ema" in checkpoint:
             #     self.load_state_dict(checkpoint["ema"], strict=False)
             #     logging.info("Loaded SL-trained policy from %s", network_path)
