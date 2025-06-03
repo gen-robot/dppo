@@ -11,12 +11,13 @@ from model.diffusion.cond_unet import replace_bn_with_gn, ConditionalUnet1D
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.schedulers.scheduling_ddim import DDIMScheduler
 from diffusers.training_utils import EMAModel
-
+import logging
+log = logging.getLogger(__name__)
 
 class DiffusionPolicy(nn.Module):
     def __init__(
             self, 
-            num_images=1,
+            num_images=1,  # only support 1 image for now
             observation_horizon=1,
             action_horizon=1,
             prediction_horizon=1,
@@ -134,6 +135,8 @@ class DiffusionPolicy(nn.Module):
             x: noisy naction, shape (B, T, action_dim)
             t: timesteps, shape (B,)
             cond: include 'state' and 'rgb' 
+                state: (B, To, Do)
+                rgb: (B, To, C, H, W)
         
         Returns:
             predicted noise, shape (B, T, action_dim)
@@ -141,8 +144,8 @@ class DiffusionPolicy(nn.Module):
         if cond is None:
             raise ValueError("condition must be provided")
             
-        qpos = cond.get('state')
-        image = cond.get('rgb')
+        qpos = cond.get('state')  # (B, To, Do)
+        image = cond.get('rgb')   # (B, To, C, H, W)
         
         if qpos is None or image is None:
             raise ValueError("condition must include 'state' and 'rgb' keys")
@@ -150,27 +153,99 @@ class DiffusionPolicy(nn.Module):
         nets = self.nets
         if not self.training and self.ema is not None:
             nets = self.ema.averaged_model
-            
-        # feature extraction
-        all_features = []
-        for cam_id in range(self.num_images):
-            cam_image = image[:, cam_id]
-            cam_features = nets['policy']['backbones'][cam_id](cam_image)
-            pool_features = nets['policy']['pools'][cam_id](cam_features)
-            pool_features = torch.flatten(pool_features, start_dim=1)
-            out_features = nets['policy']['linears'][cam_id](pool_features)
-            all_features.append(out_features)
-            
-        obs_cond = torch.cat(all_features + [qpos], dim=1)
         
-        # predict noise
+        B, T_o = qpos.shape[0], qpos.shape[1]
+        
+        all_features = []
+        for t_idx in range(T_o):
+            time_features = []
+            cam_image = image[:, t_idx] 
+            # only support 1 image for now, so cam_image is (B, C, H, W)
+            cam_features = nets['policy']['backbones'][0](cam_image)
+            pool_features = nets['policy']['pools'][0](cam_features)
+            pool_features = torch.flatten(pool_features, start_dim=1)
+            out_features = nets['policy']['linears'][0](pool_features)
+            time_features.append(out_features)
+            
+            time_obs = torch.cat(time_features + [qpos[:, t_idx]], dim=1)
+            all_features.append(time_obs)
+        
+        obs_cond = torch.cat(all_features, dim=1)
+
         noise_pred = nets['policy']['noise_pred_net'](
             sample=x,
             timestep=t,
             global_cond=obs_cond
         )
-        
         return noise_pred
+
+    def call_action(self, x, cond=None):
+        """
+        Aligned with DiffusionModel, for action prediction
+        
+        Args:
+            x: noisy naction, shape (B, T, action_dim)
+            cond: include 'state' and 'rgb' 
+                state: (B, To, Do)
+                rgb: (B, To, C, H, W)
+        
+        Returns:
+            predicted action, shape (B, T, action_dim)
+        """
+        if cond is None:
+            raise ValueError("condition must be provided")
+            
+        qpos = cond.get('state')  # (B, To, Do)
+        image = cond.get('rgb')   # (B, To, C, H, W)
+        
+        if qpos is None or image is None:
+            raise ValueError("condition must include 'state' and 'rgb' keys")
+            
+        nets = self.nets
+        if not self.training and self.ema is not None:
+            nets = self.ema.averaged_model
+        
+        B, T_o = qpos.shape[0], qpos.shape[1]
+        
+        all_features = []
+        
+        for t_idx in range(T_o):
+            time_features = []
+            cam_image = image[:, t_idx] 
+            # only support 1 image for now, so cam_image is (B, C, H, W)
+            cam_features = nets['policy']['backbones'][0](cam_image)
+            pool_features = nets['policy']['pools'][0](cam_features)
+            pool_features = torch.flatten(pool_features, start_dim=1)
+            out_features = nets['policy']['linears'][0](pool_features)
+            time_features.append(out_features)
+            
+            time_obs = torch.cat(time_features + [qpos[:, t_idx]], dim=1)
+            all_features.append(time_obs)
+        
+        obs_cond = torch.cat(all_features, dim=1)
+
+        naction = x # noisy_action
+
+        # init scheduler
+        self.noise_scheduler.set_timesteps(self.num_inference_timesteps)
+
+        for k in self.noise_scheduler.timesteps:
+            # predict noise
+            noise_pred = nets['policy']['noise_pred_net'](
+                sample=naction,
+                timestep=k,
+                global_cond=obs_cond
+            )
+
+            # inverse diffusion step (remove noise)
+            naction = self.noise_scheduler.step(
+                model_output=noise_pred,
+                timestep=k,
+                sample=naction
+            ).prev_sample
+            logging.info(f"call_action {k}step naction: {naction[..., :10]}" )
+
+        return naction  
 
     def call(self, qpos, image, actions=None, is_pad=None):
         """
