@@ -5,7 +5,7 @@ import sapien.core as sapien
 from matplotlib.colors import hsv_to_rgb, rgb_to_hsv
 
 # from pathlib import Path
-ASSET_DIR = os.path.join(os.path.dirname(__file__), "../../../asset")
+ASSET_DIR = os.path.join(os.path.dirname(__file__), "../../asset")
 
 
 @dataclasses.dataclass
@@ -619,7 +619,7 @@ def load_lab_scene_urdf(scene: sapien.Scene):
     loader.fix_root_link = True
     loader.load_multiple_collisions_from_file = True
     urdf_path = os.path.join(
-        os.path.dirname(__file__), "../../../asset/2004/mobility_cvx.urdf"
+        os.path.dirname(__file__), "../../asset/2004/mobility_cvx.urdf"
     )
     door_articulation = loader.load(
         urdf_path,
@@ -658,23 +658,17 @@ def build_actor_ycb(
         scale: float = 1.0,
         physical_material: sapien.PhysicalMaterial = None,
         density=1000,
-        root_dir=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "asset"),
+        root_dir=os.path.join(ASSET_DIR, "mani_skill2_ycb"),
         root_position=np.array([1.0, 1.0, 1.5]),
         root_angle=0.,
         obj_allow_dir = "along"
 ):
     builder = scene.create_actor_builder()
-    model_dir = os.path.join(root_dir, "mani_skill2_ycb", "models", model_id)
+    model_dir = os.path.join(root_dir, "models", model_id)
 
     collision_file = os.path.join(model_dir, "collision.obj")
     if not os.path.exists(collision_file):
-        # 如果不存在，尝试在along目录下查找
-        collision_file = os.path.join(root_dir, "mani_skill2_ycb", "models", obj_allow_dir, model_id, "collision.obj")
-        if not os.path.exists(collision_file):
-            # 如果还是不存在，尝试在along/collision目录下查找
-            collision_file = os.path.join(root_dir, "mani_skill2_ycb", "models", obj_allow_dir, model_id, "collision", "collision.obj")
-            if not os.path.exists(collision_file):
-                raise FileNotFoundError(f"Collision file not found for model {model_id}")
+        collision_file = os.path.join(root_dir,"models", obj_allow_dir, model_id, "collision", "collision.obj")
 
     if isinstance(scale, float):
         scale = [scale] * 3
@@ -688,12 +682,7 @@ def build_actor_ycb(
 
     visual_file = os.path.join(model_dir, "textured.obj")
     if not os.path.exists(visual_file):
-        visual_file = os.path.join(root_dir, "mani_skill2_ycb", "models", obj_allow_dir, model_id, "textured.obj")
-        if not os.path.exists(visual_file):
-            visual_file = os.path.join(root_dir, "mani_skill2_ycb", "models", obj_allow_dir, model_id, "poisson", "textured.obj")
-            if not os.path.exists(visual_file):
-                raise FileNotFoundError(f"Visual file not found for model {model_id}")
-
+        visual_file = os.path.join(root_dir,"models", obj_allow_dir, model_id, "poisson", "textured.obj")
     builder.add_visual_from_file(filename=visual_file, scale=scale)
 
     actor = builder.build(name=model_id)
@@ -715,8 +704,7 @@ def build_actor_egad(
         physical_material: sapien.PhysicalMaterial = None,
         render_material: sapien.RenderMaterial = None,
         density=100,
-        #root_dir=os.path.join(ASSET_DIR, "mani_skill2_egad"),
-        root_dir=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "asset", "mani_skill2_egad"),
+        root_dir=os.path.join(ASSET_DIR, "mani_skill2_egad"),
         root_position=np.array([1.0, 1.0, 1.5]),
         root_angle=0.
 ):
@@ -724,10 +712,8 @@ def build_actor_egad(
     # A heuristic way to infer split
     # split = "train" if "_" in model_id else "eval"
 
-    collision_file = os.path.join(root_dir, "egad_train_set_coacd", f"{model_id}.obj")
-    if not os.path.exists(collision_file):
-        print(f"Warning: Collision file not found: {collision_file}")
-        return None
+    collision_file = os.path.join(root_dir, f"egad_train_set_coacd", f"{model_id}.obj")
+    assert os.path.exists(collision_file)
     builder.add_multiple_collisions_from_file(
         filename=collision_file,
         scale=[scale] * 3,
@@ -735,10 +721,7 @@ def build_actor_egad(
         density=density,
     )
 
-    visual_file = os.path.join(root_dir, "egad_train_set", f"{model_id}.obj")
-    if not os.path.exists(visual_file):
-        print(f"Warning: Visual file not found: {visual_file}")
-        return None
+    visual_file = os.path.join(root_dir, f"egad_train_set", f"{model_id}.obj")
     builder.add_visual_from_file(
         filename=visual_file, scale=[scale] * 3, material=render_material
     )
@@ -765,15 +748,18 @@ def build_actor_real(
         root_dir=os.path.join(ASSET_DIR, "real_assets"),
         root_position=np.array([1.0, 1.0, 1.5]),
         root_rot = np.array([0., 0., 0., 1.]),
-        obj_allow_dir = "along"
+        dir = None
 ):
 
     builder = scene.create_actor_builder()
-    collision_file = os.path.join(root_dir, obj_allow_dir, "collision", f"{model_id}_collision.obj")
+    if dir is None:
+        collision_file = os.path.join(root_dir, "available", "collision", f"{model_id}_collision.obj")
+    else:
+        collision_file = os.path.join(root_dir, dir, "collision", f"{model_id}_collision.obj")
 
     if isinstance(scale, (int, float)):
         scale = [scale] * 3
-    print(scale)
+    # print(scale)
 
     builder.add_multiple_collisions_from_file(   # without convex
         filename=collision_file,
@@ -782,7 +768,10 @@ def build_actor_real(
         density=density,
     )
 
-    visual_file = os.path.join(root_dir, obj_allow_dir, f"{model_id}.glb")  #
+    if dir is None:
+        visual_file = os.path.join(root_dir,"available",  f"{model_id}.glb")  #
+    else:
+        visual_file = os.path.join(root_dir, dir, f"{model_id}.glb")
 
     builder.add_visual_from_file(
         filename=visual_file, scale=scale, material=render_material

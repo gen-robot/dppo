@@ -5,7 +5,7 @@ import sapien.core as sapien
 from matplotlib.colors import hsv_to_rgb, rgb_to_hsv
 
 
-ASSET_DIR = os.path.join(os.path.dirname(__file__), "../../../asset")
+ASSET_DIR = os.path.join(os.path.dirname(__file__), "../../asset")
 
 
 @dataclasses.dataclass
@@ -425,7 +425,7 @@ def load_lab_scene_urdf(scene: sapien.Scene):
     loader.fix_root_link = True
     loader.load_multiple_collisions_from_file = True
     urdf_path = os.path.join(
-        os.path.dirname(__file__), "../../../asset/2004/mobility_cvx.urdf"
+        os.path.dirname(__file__), "../../asset/2004/mobility_cvx.urdf"
     )
     door_articulation = loader.load(
         urdf_path,
