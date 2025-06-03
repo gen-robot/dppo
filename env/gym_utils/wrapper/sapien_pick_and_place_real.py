@@ -20,20 +20,24 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
     def __init__(
             self, 
             env, 
+            record=False,
             n_obs_steps=4, 
             n_action_steps=4, 
             max_episode_steps=200, 
             normalization_path=None,
+            cam = ["third-rgb"], #, "wirst-rgb"
+            n_envs=1,
         ):
 
         super().__init__(env)
         self.seed_list = None
+        self.record = record
         self.normalization_path = normalization_path
-        
+
         # obs is include state(10-dim, include gripper width) and image
         self._single_observation_space = spaces.Dict({
-            "state": spaces.Box(low=-1.0, high=1.0, shape=(10,), dtype=np.float32),  # TCP位姿 (位置3 + 四元数4)
-            "rgb": spaces.Box(low=0., high=1.0, shape=(3, 224, 224), dtype=np.float32),  # RGB图像
+            "state": spaces.Box(low=-1.0, high=1.0, shape=(10,), dtype=np.float32), 
+            "rgb": spaces.Box(low=0., high=1.0, shape=(3, 224, 224), dtype=np.float32),  
         })
 
         self._single_action_space = spaces.Box(
@@ -98,18 +102,27 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
                 pose_p,
                 pose_mat_6,
                 np.array([obs["gripper_width"]]),
-            ]) - self.pose_gripper_mean) / self.pose_gripper_scale
+            ]) - self.proprio_gripper_mean) / self.proprio_gripper_scale
 
         images = obs["third-rgb"]
-        original_size = images.shape[2:]
+        assert len(images.shape) == 3,  f"Warning: Unexpected image shape for third-rgb: {images.shape}"
+
+        original_size = images.shape[:2]
         ratio = 0.95
-        self.transformations = [
+        transformations = [
             transforms.CenterCrop(size=[int(original_size[0] * ratio), int(original_size[1] * ratio)]),
             transforms.Resize((224, 224), antialias=True),
         ]
-        for transform in self.transformations:
-            images = transform(images)
-        single_obs["rgb"] = images
+        
+        images_tensor = torch.from_numpy(images).float()
+        images_tensor = torch.einsum('h w c -> c h w', images_tensor)
+        
+        for transform in transformations:
+            images_tensor = transform(images_tensor)
+            
+        # [C, H, W]
+        images_tensor = images_tensor / 255.0
+        single_obs["rgb"] = images_tensor
 
         return single_obs
 
@@ -160,12 +173,11 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
         total_reward = 0
         terminated = False
         truncated = False
-        info = {
-            "is_success": [],
-        }
-        
+        info = {}
+        success_array =[]
+        record_list = []
         # only use state for pose_at_obs
-        obs = self.env.get_observation(use_img=False)
+        obs = self.env.get_observation(use_image=False)
         pose = obs["tcp_pose"]
         pose_p, pose_q = pose[:3], pose[3:]
         pose_mat = quat2mat(pose_q)
@@ -206,7 +218,9 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
 
             obs, step_reward, step_terminated, step_truncated, step_info = self.env.step(pose_action)
             
-            # obs process
+            if self.record:
+              record_list.append(obs["third-rgb"])
+            
             single_obs = self.process_observation(obs)
             self.obs.append(single_obs)
             if len(self.obs) > self.n_obs_steps:
@@ -217,8 +231,11 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
             truncated = truncated or step_truncated
             
             if "is_success" in step_info:
-                info["is_success"].append(float(step_info["is_success"]))
-        
+                success_array.append(float(step_info["is_success"]))
+    
+        # only support one env yet, [1, n_action_steps]
+        info["is_success"] = np.expand_dims(np.array(success_array), axis=0)
+
         stacked_obs = self._stack_last_n_obs_dict(self.obs, self.n_obs_steps)
         self.env_steps += n_steps_to_execute
         
@@ -233,7 +250,7 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
             
         info["converted_actions"] = converted_actions
         
-        return stacked_obs, total_reward, terminated, truncated, info
+        return stacked_obs, total_reward, terminated, truncated, info, record_list
     
     def _stack_last_n_obs_dict(self, all_obs, n_steps):
         """
@@ -247,23 +264,23 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
         all_obs = list(all_obs)
         n_envs = 1  # only support one env yet
     
+        recent_obs = []
+        
+        if len(all_obs) < n_steps:
+            padding = [all_obs[0]] * (n_steps - len(all_obs))
+            recent_obs = padding + all_obs
+        else:
+            recent_obs = all_obs[-n_steps:]
+        
         result = {}
-        for key in all_obs[-1]:
-            shape = all_obs[-1][key].shape
-            
-            #  (n_envs=1, n_obs_steps, *shape) 
-            stacked = np.zeros((n_envs, n_steps) + shape, dtype=all_obs[-1][key].dtype)
-            start_idx = -min(n_steps, len(all_obs))
-            
-            for i, obs in enumerate(all_obs[start_idx:]):
-                pos = i + n_steps - len(all_obs[start_idx:])
-                stacked[0, pos] = obs[key]  
-            
-            if n_steps > len(all_obs):
-                for i in range(n_steps - len(all_obs)):
-                    stacked[0, i] = stacked[0, n_steps - len(all_obs)]
-    
-            result[key] = stacked
+        for key in recent_obs[0].keys():
+            key_obs_list = [obs[key] for obs in recent_obs]
+            # (n_envs, n_obs_steps, ...)
+            if isinstance(key_obs_list[0], torch.Tensor):
+                key_obs_list = [tensor.cpu().numpy() if tensor.requires_grad else tensor.numpy() 
+                         for tensor in key_obs_list]
+            key_obs_array = np.expand_dims(np.stack(key_obs_list), axis=0)
+            result[key] = key_obs_array
         
         return result
         
