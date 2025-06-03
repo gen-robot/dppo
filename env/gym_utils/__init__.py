@@ -87,6 +87,7 @@ def make_async(
         )   
         env = SapienPickAndPlaceWrapper(
                 env,
+                record=record,
                 n_obs_steps=obs_steps,
                 n_action_steps=act_steps,
                 max_episode_steps=max_episode_steps,
