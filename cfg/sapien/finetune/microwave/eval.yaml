@@ -5,18 +5,18 @@ hydra:
     dir: ${logdir}
 _target_: agent.finetune.train_ppo_diffusion_img_agent.TrainPPOImgDiffusionAgent  
 
-name: ${env_name}_ppo_diffusion_ta${horizon_steps}_td${denoising_steps}_tdf${ft_denoising_steps}
+name: eval__${env_name}_ppo_diffusion_ta${horizon_steps}_td${denoising_steps}_tdf${ft_denoising_steps}
 logdir: /home/zhouzhiting/Projects/dppo/sapien-finetune/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
-base_policy_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/cano_2/policy_step_254000_seed_0.ckpt  
-normalization_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/cano_2/norm_stats_1.pkl  
+base_policy_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/microwave/policy_step_510000_seed_0.ckpt
+normalization_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/microwave/norm_stats_1.pkl
 
-seed: 42
+seed: 0 # 42
 device: cuda:0
-env_name: pick_and_place
+env_name: microwave
 obs_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1)
 action_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1) 
 denoising_steps: 50  
-ft_denoising_steps: 4
+ft_denoising_steps: 10  
 cond_steps: 1
 img_cond_steps: 1 
 horizon_steps: 20
@@ -24,16 +24,16 @@ act_steps: 10
 use_ddim: True
 
 env:
-  n_envs: 50  #  1
+  n_envs: 1  #  1
   asynchronous: True # False
   name: ${env_name}
   env_type: "sapien"
   max_episode_steps: 400
-
+  
   use_gui: False
   save_video: True
 
-  best_reward_threshold_for_success: 1.0
+  best_reward_threshold_for_success: 5.0
   video_dir: /home/zhouzhiting/dppo/videos/pick_and_place
   use_image_obs: True
   reset_at_iteration: True  # mixture obj? single obj?
@@ -53,12 +53,12 @@ wandb:
   entity: "zhou-zt21-tsinghua-university"
   project: dppo-sapien-${env_name}
   run: ${now:%H-%M-%S}_${name}
-  mode: "offline"  # "online" or "offline"
+  mode: "disabled"  # "online" or "offline"
 
 train:
-  n_train_itr: 1000  
+  n_train_itr: 1
   n_critic_warmup_itr: 2 
-  n_steps: 40
+  n_steps: 80
   gamma: 0.999 
   augment: True
   grad_accumulate: 15
@@ -66,19 +66,19 @@ train:
   actor_weight_decay: 0
   actor_lr_scheduler:
     first_cycle_steps: ${train.n_train_itr}
-    warmup_steps: 10
+    warmup_steps: 0
     min_lr: 5e-5
   critic_lr: 1e-3
   critic_weight_decay: 0
   critic_lr_scheduler:
     first_cycle_steps: ${train.n_train_itr}
-    warmup_steps: 10
+    warmup_steps: 0
     min_lr: 1e-3
-  save_model_freq: 10
+  save_model_freq: 100
   val_freq: 10
   render:
-    freq: 10
-    num: 10
+    freq: 1
+    num: 1
   # PPO specific
   reward_scale_running: True
   reward_scale_const: 1.0
@@ -152,3 +152,9 @@ model:
   action_dim: ${action_dim}
   denoising_steps: ${denoising_steps}
   device: ${device}
+
+logging:
+  log_interval: 10
+  save_interval: 100
+  eval_interval: 100
+  n_eval_episodes: 10

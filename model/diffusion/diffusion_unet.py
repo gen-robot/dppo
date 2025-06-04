@@ -4,16 +4,18 @@ import torch.nn as nn
 from torch.nn import functional as F
 import torchvision.transforms as transforms
 import numpy as np
+from typing import OrderedDict
 
 from model.common.base_nets import ResNet18Conv, SpatialSoftmax
 from model.diffusion.cond_unet import replace_bn_with_gn, ConditionalUnet1D
+from model.resnet.base_nets import ResNetImageStateEmbeddung
 
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.schedulers.scheduling_ddim import DDIMScheduler
 from diffusers.training_utils import EMAModel
 import logging
 log = logging.getLogger(__name__)
-
+    
 class DiffusionPolicy(nn.Module):
     def __init__(
             self, 
@@ -50,41 +52,7 @@ class DiffusionPolicy(nn.Module):
         self.obs_dim = self.feature_dimension * self.num_images + self.qpos_dim  # camera features and proprio
 
         self.resnet_pretrained = resnet_pretrained
-        backbones = []
-        pools = []
-        linears = []
-        for _ in range(self.num_images):
-            backbones.append(
-                ResNet18Conv(
-                    **{
-                        'input_channel': 3,
-                        'pretrained': self.resnet_pretrained,
-                        'input_coord_conv': False
-                    }
-                )
-            )
-            pools.append(
-                SpatialSoftmax(
-                    **{
-                        # 'input_shape': [512, 8, 10], # for (240, 320)
-                        'input_shape': [512, 7, 7],  # for (224, 224)
-                        'num_kp': self.num_kp,
-                        'temperature': 1.0,
-                        'learnable_temperature': False,
-                        'noise_std': 0.0
-                    }
-                )
-            )
-            linears.append(
-                torch.nn.Linear(int(np.prod([self.num_kp, 2])), self.feature_dimension)
-            )
-
-        backbones = nn.ModuleList(backbones)
-        pools = nn.ModuleList(pools)
-        linears = nn.ModuleList(linears)
-
-        backbones = replace_bn_with_gn(backbones)  # TODO
-
+        
         noise_pred_net = ConditionalUnet1D(
             input_dim=self.ac_dim,
             global_cond_dim=self.obs_dim * self.observation_horizon,
@@ -92,16 +60,18 @@ class DiffusionPolicy(nn.Module):
             diffusion_step_embed_dim= diffusion_step_embed_dim
         )
 
-        nets = nn.ModuleDict({
-            'policy': nn.ModuleDict({
-                'backbones': backbones,
-                'pools': pools,
-                'linears': linears,
-                'noise_pred_net': noise_pred_net
-            })
-        })
-
-        nets = nets.float().cuda()
+        obs_encoder = ResNetImageStateEmbeddung(
+            resnet_feature_dim=self.feature_dimension, 
+            resnet_pretrained=self.resnet_pretrained, 
+            num_images=self.num_images, num_kp=self.num_kp
+        )
+        nets = nn.ModuleDict(
+            {
+                "obs_encoder": obs_encoder, 
+                "noise_pred_net": noise_pred_net
+            }
+        )
+        nets = nets.cuda()
         ENABLE_EMA = True
         if ENABLE_EMA:
             ema = EMAModel(model=nets, power=self.ema_power)
@@ -156,23 +126,9 @@ class DiffusionPolicy(nn.Module):
         
         B, T_o = qpos.shape[0], qpos.shape[1]
         
-        all_features = []
-        for t_idx in range(T_o):
-            time_features = []
-            cam_image = image[:, t_idx] 
-            # only support 1 image for now, so cam_image is (B, C, H, W)
-            cam_features = nets['policy']['backbones'][0](cam_image)
-            pool_features = nets['policy']['pools'][0](cam_features)
-            pool_features = torch.flatten(pool_features, start_dim=1)
-            out_features = nets['policy']['linears'][0](pool_features)
-            time_features.append(out_features)
-            
-            time_obs = torch.cat(time_features + [qpos[:, t_idx]], dim=1)
-            all_features.append(time_obs)
-        
-        obs_cond = torch.cat(all_features, dim=1)
+        obs_cond = nets["obs_encoder"](qpos, image)  # [1, 74]
 
-        noise_pred = nets['policy']['noise_pred_net'](
+        noise_pred = nets['noise_pred_net'](
             sample=x,
             timestep=t,
             global_cond=obs_cond
@@ -356,10 +312,47 @@ class DiffusionPolicy(nn.Module):
         }
 
     def deserialize(self, model_dict):
-        status = self.nets.load_state_dict(model_dict["nets"])
+        noise_pred_net_dict = OrderedDict()
+        backbone_dict = OrderedDict()
+        pools_dict = OrderedDict()
+        linears_dict = OrderedDict()
+        
+        for key, value in model_dict["nets"].items():
+            if key.startswith("policy.noise_pred_net"):
+                noise_pred_net_dict.update({key[len("policy.noise_pred_net."):]: value})
+            if key.startswith("policy.backbones"):
+                backbone_dict.update({key[len("policy.backbones."):]: value})
+            if key.startswith("policy.pools"):
+                pools_dict.update({key[len("policy.pools."):]: value})
+            if key.startswith("policy.linears"):
+                linears_dict.update({key[len("policy.linears."):]: value})
+        
+        self.nets["noise_pred_net"].load_state_dict(noise_pred_net_dict)
+        self.nets["obs_encoder"].image_encoder.backbones.load_state_dict(backbone_dict)
+        self.nets["obs_encoder"].image_encoder.pools.load_state_dict(pools_dict)
+        self.nets["obs_encoder"].image_encoder.linears.load_state_dict(linears_dict)
+        
+        # status = self.nets.load_state_dict(model_dict["nets"])
         print('Loaded model')
         if model_dict.get("ema", None) is not None:
             print('Loaded EMA')
-            status_ema = self.ema.averaged_model.load_state_dict(model_dict["ema"])
-            status = [status, status_ema]
-        return status
+            noise_pred_net_dict = OrderedDict()
+            backbone_dict = OrderedDict()
+            pools_dict = OrderedDict()
+            linears_dict = OrderedDict()
+            
+            for key, value in model_dict["ema"].items():
+                if key.startswith("policy.noise_pred_net"):
+                    noise_pred_net_dict.update({key[len("policy.noise_pred_net."):]: value})
+                if key.startswith("policy.backbones"):
+                    backbone_dict.update({key[len("policy.backbones."):]: value})
+                if key.startswith("policy.pools"):
+                    pools_dict.update({key[len("policy.pools."):]: value})
+                if key.startswith("policy.linears"):
+                    linears_dict.update({key[len("policy.linears."):]: value})
+            
+            self.ema.averaged_model["noise_pred_net"].load_state_dict(noise_pred_net_dict)
+            self.ema.averaged_model["obs_encoder"].image_encoder.backbones.load_state_dict(backbone_dict)
+            self.ema.averaged_model["obs_encoder"].image_encoder.pools.load_state_dict(pools_dict)
+            self.ema.averaged_model["obs_encoder"].image_encoder.linears.load_state_dict(linears_dict)
+

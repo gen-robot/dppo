@@ -14,8 +14,8 @@ from transforms3d.quaternions import qmult, qconjugate, quat2mat, mat2quat
 from typing import List
 from env.sapien_utils.math import wrap_to_pi, euler2quat, quat2euler, mat2euler, get_pose_from_rot_pos
 
-from .utils import apply_random_texture, check_intersect_2d, grasp_pose_process, check_intersect_2d_
-from .articulation.pick_and_place_articulation import (
+from env.utils import apply_random_texture, check_intersect_2d, grasp_pose_process, check_intersect_2d_
+from env.articulation.pick_and_place_articulation import (
     load_lab_wall,
     load_table_4,
     load_storage_box,
@@ -24,8 +24,8 @@ from .articulation.pick_and_place_articulation import (
     build_actor_real,
     ASSET_DIR
 )
-from .robot import load_robot_panda
-from .controller.whole_body_controller import ArmSimpleController, PandaSimpleController
+from env.robot import load_robot_panda
+from env.controller.whole_body_controller import ArmSimpleController, PandaSimpleController
 import json
 import pickle
 import requests
@@ -537,7 +537,7 @@ class PickAndPlaceEnv(BaseEnv):
         self.expert_phase = 0
         self.reset_tcp_pose = self._get_tcp_pose()
 
-        self.reload_objs(obj_list=obj_list)
+        self.reload_objs(obj_list=obj_list, egad_ratio=0.0)
         # while not self.objs:
         #     print(self.objs)
         #     self.reload_objs(obj_list=obj_list)
@@ -858,7 +858,7 @@ class PickAndPlaceEnv(BaseEnv):
 
 def test():
 
-    from .sapien_utils.wrapper import StateObservationWrapper
+    from ..sapien_utils.wrapper import StateObservationWrapper
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 

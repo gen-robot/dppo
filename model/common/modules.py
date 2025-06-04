@@ -29,14 +29,25 @@ class SpatialEmb(nn.Module):
         return f"weight: nn.Parameter ({self.weight.size()})"
 
     def forward(self, feat: torch.Tensor, prop: torch.Tensor):
+        '''
+        params:
+            - feat: [B, num_patch, patch_dim] 
+            - prop: [B, state-dim]
+        
+        return:
+            - z: [B, state-dim + num_patch]
+        '''
+        # [B, num_patch, patch_dim] -> [B, patch_dim, num_patch]
         feat = feat.transpose(1, 2)
 
         if self.prop_dim > 0:
+            # [B, state-dim] -> [B, patch_dim, state-dim]
             repeated_prop = prop.unsqueeze(1).repeat(1, feat.size(1), 1)
             feat = torch.cat((feat, repeated_prop), dim=-1)
+            # [B, patch_dim, state-dim + num_patch]
 
         y = self.input_proj(feat)
-        z = (self.weight * y).sum(1)
+        z = (self.weight * y).sum(1) # [B, state-dim + num_patch]
         z = self.dropout(z)
         return z
 

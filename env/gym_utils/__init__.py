@@ -70,8 +70,8 @@ def make_async(
     """
 
     if env_type == "sapien":
-        from env.pick_and_place_panda_real_rl import PickAndPlaceEnv
-        from env.sapien_utils.sapien_pick_and_place_real import SapienPickAndPlaceWrapper
+        from env.homebot.pick_and_place_panda_real_rl import PickAndPlaceEnv
+        from env.sapien_utils.homebot_multistep_wrapper import HomeBotMultiStepWrapper
         import torch
         
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -85,7 +85,7 @@ def make_async(
             domain_randomize=True,
             canonical=True
         )   
-        env = SapienPickAndPlaceWrapper(
+        env = HomeBotMultiStepWrapper(
                 env,
                 n_obs_steps=obs_steps,
                 n_action_steps=act_steps,

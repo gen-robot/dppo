@@ -89,6 +89,10 @@ class VPGDiffusion(DiffusionModel):
 
         # Value function
         self.critic = critic.to(self.device)
+        logging.info(
+            f"Number of critic parameters: {sum(p.numel() for p in self.critic.parameters())}"
+        )
+    
         if network_path is not None:
             checkpoint = torch.load(
                 network_path, map_location=self.device, weights_only=True

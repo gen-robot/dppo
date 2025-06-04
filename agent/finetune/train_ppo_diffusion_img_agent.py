@@ -51,10 +51,13 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
             options_venv = [{} for _ in range(self.n_envs)]
         
             render_mode = self.itr % self.render_freq == 0 and self.render_video
-            self.venv.env_method("set_record_mode", render_mode)
+            if hasattr(self.venv, "env_method"):
+                self.venv.env_method("set_record_mode", render_mode)
+            else:
+                self.venv.set_record_mode(render_mode)
             if render_mode:
                 video_writers = []
-                for env_ind in range(self.n_render):
+                for env_ind in range(min(self.n_render, self.n_envs)):
                     options_venv[env_ind]["video_path"] = os.path.join(
                         self.render_dir, f"itr-{self.itr}_trial-{env_ind}.mp4"
                     )
@@ -104,6 +107,9 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
             env_step_time = 0.0
             network_update_time = 0.0
 
+            # obj successfully placed
+            success_trajs = np.zeros((self.n_steps, self.n_envs))
+            
             for step in range(self.n_steps):
                 if step % 10 == 0:
                     print(f"Processed step {step} of {self.n_steps}")
@@ -116,11 +122,14 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                         .to(self.device)
                         for key in self.obs_dims
                     }  # batch each type of obs and put into dict
+                    # forward_start = time.time()
                     samples = self.model(
                         cond=cond,
                         deterministic=eval_mode,
                         return_chain=True,
                     )
+                    # forward_time = time.time() - forward_start
+                    # print(f"{forward_time=}")
                     output_venv = (
                         samples.trajectories.cpu().numpy()
                     )  # n_env x horizon x act
@@ -131,13 +140,13 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
 
                 # Apply multi-step action
                 step_start = time.time()
-                # obj successfully placed
-                success_trajs = np.zeros((self.n_steps, self.n_envs))  
                 ## record_list only exists in sapien env
                 obs_venv, reward_venv, terminated_venv, truncated_venv, info_venv = (
                     self.venv.step(action_venv)
                 )
-                env_step_time += time.time() - step_start
+                single_step_time = time.time() - step_start
+                # print(f"{single_step_time=}")
+                env_step_time += single_step_time
                 done_venv = terminated_venv | truncated_venv
                 for k in obs_trajs:
                     obs_trajs[k][step] = prev_obs_venv[k]
@@ -155,7 +164,7 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 assert ("is_success" in info_venv), "No success info in the environment step"
                 
                 env_success = info_venv["is_success"] # [num_envs, n_act]
-                success_trajs[step] = np.any(env_success.any(axis=-1))
+                success_trajs[step] = env_success.any(axis=-1)
 
                 # update for next step
                 prev_obs_venv = obs_venv
@@ -164,8 +173,9 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 cnt_train_step += self.n_envs * self.act_steps if not eval_mode else 0
             ### record in sapien env
             if render_mode:
-                for writer in video_writer.values():
-                    writer.close()
+                for video_writer in video_writers:
+                    for writer in video_writer.values():
+                        writer.close()
                 
             # Summarize episode reward --- this needs to be handled differently depending on whether the environment is reset after each iteration. Only count episodes that finish within the iteration.
             episodes_start_end = []
@@ -204,7 +214,7 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 # success_trajs: [start:end-1] 1 dim bool (float), episode_grasp_success: [n_episodes] 1 dim bool (float)
                 episode_whole_success = np.array(
                     [np.any(success_traj) for success_traj in success_trajs_split]
-                )            
+                )
                 # episode_grasp_success_rate:  [n_episodes] 1 dim float
                 action_step_in_episode_success = np.array(
                     [np.mean(success_traj) for success_traj in success_trajs_split]
@@ -484,8 +494,9 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                         f"eval: success rate {success_rate:8.4f} |" 
                         f"avg episode reward {avg_episode_reward:8.4f} | "
                         f"avg best reward {avg_best_reward:8.4f} | "
-                        f"episode_whole_success_rate {episode_whole_success_rate:8.4f} | "
-                        f"action_step_in_episode_success_rate {action_step_in_episode_success_rate:8.4f} | "
+                        f"episode whole success rate {episode_whole_success_rate:8.4f} | "
+                        f"action step in episode success rate {action_step_in_episode_success_rate:8.4f} | "
+                        f"env step time: {env_step_time} | "
                         f"num episode {num_episode_finished:8d}"
                     )
                     if self.use_wandb:
@@ -506,7 +517,14 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                     run_results[-1]["eval_best_reward"] = avg_best_reward
                 else:
                     log.info(
-                        f"{self.itr}: step {cnt_train_step:8d} | loss {loss:8.4f} | pg loss {pg_loss:8.4f} | value loss {v_loss:8.4f} | bc loss {bc_loss:8.4f} | reward {avg_episode_reward:8.4f} | eta {eta:8.4f} | t:{running_time:8.4f}"
+                        f"train - {self.itr}: step {cnt_train_step:8d} | loss {loss:8.4f} | pg loss {pg_loss:8.4f} | "
+                        f"value loss {v_loss:8.4f} | bc loss {bc_loss:8.4f} | reward {avg_episode_reward:8.4f} | "
+                        f"eta {eta:8.4f} | t:{running_time:8.4f} | "
+                        f"episode_whole_success_rate: {episode_whole_success_rate:8.4f} | "
+                        f"avg episode reward - train: {avg_episode_reward:8.4f} | "
+                        f"avg best reward - train: {avg_best_reward:8.4f} | "
+                        f"env step time: {env_step_time} | "
+                        f"network update time: {network_update_time}"
                     )
                     if self.use_wandb:
                         wandb.log(

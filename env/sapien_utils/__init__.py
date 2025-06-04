@@ -1,3 +1,16 @@
+import torch
+from env.homebot.pick_and_place_panda_real_rl import PickAndPlaceEnv
+from env.homebot.microwave import MicrowavePushAndPullEnv
+
+from env.sapien_utils.homebot_multistep_wrapper import HomeBotMultiStepWrapper
+from env.sapien_utils.subproc_vec_env import SubprocVecEnv
+
+
+HOMEBOT_ENV_DICT = {
+    "pick_and_place": PickAndPlaceEnv, 
+    "microwave": MicrowavePushAndPullEnv
+}
+
 def make_async_sapien(
     id,
     num_envs=1,
@@ -23,19 +36,17 @@ def make_async_sapien(
     **kwargs,
 ):
     if env_type == "sapien":
-        from env.pick_and_place_panda_real_rl import PickAndPlaceEnv
-        from env.sapien_utils.sapien_pick_and_place_real import SapienPickAndPlaceWrapper
-        from env.sapien_utils.subproc_vec_env import SubprocVecEnv
-        import torch
+        
         
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        env_cls = HOMEBOT_ENV_DICT[id]
         
-        if asynchronous and num_envs > 1:
+        if asynchronous:
             def make_env(idx):
                 def _init():
                     env_seed = kwargs.get('seed', 0) + idx if 'seed' in kwargs else None
                     
-                    env = PickAndPlaceEnv(
+                    env = env_cls(
                         use_gui=(use_gui and idx == 0), # only record in the first environment
                         device=device,
                         obs_keys=("tcp_pose", "gripper_width", "privileged_obs", "third-rgb"),
@@ -60,7 +71,7 @@ def make_async_sapien(
             venv = SubprocVecEnv(env_fns, start_method='spawn')
             return venv
         else:
-            env = PickAndPlaceEnv(
+            env = env_cls(
                 use_gui=use_gui,
                 device=device,
                 obs_keys=("tcp_pose", "gripper_width", "privileged_obs", "third-rgb"),

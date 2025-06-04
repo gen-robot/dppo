@@ -11,7 +11,7 @@ from env.sapien_utils.math import (
     mat2euler,
 )
 from transforms3d.quaternions import qmult, qconjugate, quat2mat, mat2quat
-from homebot_sapien.algorithm.imitation.dataset import OBS_NORMALIZE_PARAMS
+# from homebot_sapien.algorithm.imitation.dataset import OBS_NORMALIZE_PARAMS
 
 
 class DoneOnSuccessWrapper(gym.Wrapper):

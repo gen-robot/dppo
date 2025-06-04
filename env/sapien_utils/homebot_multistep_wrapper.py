@@ -11,7 +11,7 @@ from transforms3d.euler import mat2euler
 from env.sapien_utils.math import get_pose_from_rot_pos
 import torchvision.transforms as transforms
 
-class SapienPickAndPlaceWrapper(gym.Wrapper):
+class HomeBotMultiStepWrapper(gym.Wrapper):
     """
         SAPIEN Pick and Place Real rl wrapper
         support venv reset and step    
