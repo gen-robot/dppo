@@ -25,14 +25,14 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
             n_action_steps=4, 
             max_episode_steps=200, 
             normalization_path=None,
-            cam = ["third-rgb"], #, "wirst-rgb"
-            n_envs=1,
+            asynchronous=True,
         ):
 
         super().__init__(env)
-        self.seed_list = None
+        self.seed_value = None
         self.record = record
         self.normalization_path = normalization_path
+        self.asynchronous = asynchronous
 
         # obs is include state(10-dim, include gripper width) and image
         self._single_observation_space = spaces.Dict({
@@ -127,8 +127,8 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
         return single_obs
 
     def reset(self, options_list=None):
-        if self.seed_list is not None:
-            seed = self.seed_list[0]  # not support one env yet 
+        if self.seed_value is not None:
+            seed = self.seed_value 
         else:
             seed = None
         
@@ -141,14 +141,14 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
         self.obs.append(single_obs)
         stacked_obs = self._stack_last_n_obs_dict(self.obs, self.n_obs_steps)
 
-        return stacked_obs
+        return stacked_obs, info
 
-    def seed(self, seed_list: list):
+    def seed(self, seed=None):
         """
         Args:
-            seed: num_envs seed list
+            seed: int
         """
-        self.seed_list = seed_list
+        self.seed_value = seed 
 
     def reset_arg(self, options_list=None):
         return self.reset(options_list=options_list) 
@@ -183,19 +183,23 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
         pose_mat = quat2mat(pose_q)
         pose_at_obs = get_pose_from_rot_pos(pose_mat, pose_p)
         
-        assert len(action.shape) == 3, f"Expected action shape [n_envs, n_action_steps, 10], got {action.shape}"
-        
+        if self.asynchronous == False:
+            assert len(action.shape) == 3, f"Expected action shape 3, [1, n_steps, action_dim], got {action.shape}"
+            action = action[0, :, :]
+        else:
+            assert len(action.shape) == 2, f"Expected action shape 2, for single env in asynchronous envs, got {action.shape}"
+
         # unnormalize
         if self.normalization_path is not None:
-            action = action * np.expand_dims(self.pose_gripper_scale, axis=(0, 1)) \
-                            + np.expand_dims(self.pose_gripper_mean, axis=(0, 1))
+            axis = (0,1) if len(action.shape) == 3 else (0,)
+            action = action * np.expand_dims(self.pose_gripper_scale, axis=axis) \
+                            + np.expand_dims(self.pose_gripper_mean, axis=axis)
        
         n_steps_to_execute = self.n_action_steps
         converted_actions = []
 
         for i in range(n_steps_to_execute):
-            # only support one env yet
-            current_action = action[0, i] # [10]
+            current_action = action[i] # [10]
 
             mat_6 = current_action[3:9].reshape(3, 2)
             mat_6[:, 0] = mat_6[:, 0] / np.linalg.norm(mat_6[:, 0])
@@ -232,9 +236,9 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
             
             if "is_success" in step_info:
                 success_array.append(float(step_info["is_success"]))
-    
-        # only support one env yet, [1, n_action_steps]
-        info["is_success"] = np.expand_dims(np.array(success_array), axis=0)
+        
+        # [n_action_steps]
+        info["is_success"] = np.array(success_array)
 
         stacked_obs = self._stack_last_n_obs_dict(self.obs, self.n_obs_steps)
         self.env_steps += n_steps_to_execute
@@ -247,10 +251,13 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
         if terminated or truncated:
             self.env_steps = 0
             self.reset()
-            
+        
+        if self.record:
+            info["record_list"] = record_list
+
         info["converted_actions"] = converted_actions
         
-        return stacked_obs, total_reward, terminated, truncated, info, record_list
+        return stacked_obs, total_reward, terminated, truncated, info
     
     def _stack_last_n_obs_dict(self, all_obs, n_steps):
         """
@@ -258,7 +265,11 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
                 all_obs: queue of dicts, each dict contains the observation
                 n_steps: int, the number of steps to stack
             Returns:
-                stacked_obs: {key: (n_envs=1, n_obs_steps, *obs_dims)}
+                stacked_obs: 
+                    asynchronous envs:
+                        {key: (n_obs_steps, *obs_dims)}
+                    synchronous envs:
+                        {key: (n_envs=1, n_obs_steps, *obs_dims)}
         """
         assert len(all_obs) > 0
         all_obs = list(all_obs)
@@ -279,11 +290,24 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
             if isinstance(key_obs_list[0], torch.Tensor):
                 key_obs_list = [tensor.cpu().numpy() if tensor.requires_grad else tensor.numpy() 
                          for tensor in key_obs_list]
-            key_obs_array = np.expand_dims(np.stack(key_obs_list), axis=0)
+            if self.asynchronous == False:
+                key_obs_array = np.expand_dims(np.stack(key_obs_list), axis=0)
+            else:
+                key_obs_array = np.stack(key_obs_list)
             result[key] = key_obs_array
         
         return result
         
     def _get_observation(self):
         return self.env.get_observation()
-        
+
+    ##### subproc venv ######
+
+    def close(self):
+        return self.env.close()
+
+    def render(self):
+        return self.env.capture_images()
+
+    def get_obs(self):
+        return self._get_observation()

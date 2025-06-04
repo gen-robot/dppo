@@ -5,7 +5,7 @@ from .wrapper import (
     IOFromConfigWrapper,
     SeqActionFromConfigWrapper,
 )
-from homebot_sapien.vec_wrapper.subproc_vec_env import SubprocVecEnv
+from .subproc_vec_env import SubprocVecEnv
 from gymnasium.wrappers.flatten_observation import FlattenObservation
 from gymnasium.wrappers.record_episode_statistics import RecordEpisodeStatistics
 

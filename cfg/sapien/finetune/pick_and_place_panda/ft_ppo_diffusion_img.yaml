@@ -24,7 +24,8 @@ act_steps: 10
 use_ddim: True
 
 env:
-  n_envs: 1
+  n_envs: 50  #  1
+  asynchronous: True # False
   name: ${env_name}
   env_type: "sapien"
   max_episode_steps: 400
@@ -55,7 +56,7 @@ wandb:
 train:
   n_train_itr: 1000  
   n_critic_warmup_itr: 2 
-  n_steps: 400
+  n_steps: 40
   gamma: 0.999 
   augment: True
   grad_accumulate: 15

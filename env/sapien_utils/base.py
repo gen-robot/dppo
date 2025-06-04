@@ -51,7 +51,7 @@ class BaseEnv(gym.Env):
                 "init_not_used", width=10, height=10, fovy=1., near=0.1, far=1
             )
             self.scene.remove_camera(cam)
-            print("add and remove camera")
+            # print("add and remove camera")
 
         self.cameras: Dict[str, sapien.CameraEntity] = {}
         self.frame_skip = 10

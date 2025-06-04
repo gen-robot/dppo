@@ -9,7 +9,7 @@ import imageio
 from collections import OrderedDict
 import sys 
 sys.path.append("/home/zhouzhiting/Projects/homebot")
-from env.gym_utils.wrapper.base import BaseEnv, recover_action, get_pairwise_contact_impulse, get_pairwise_contacts
+from env.sapien_utils.base import BaseEnv, recover_action, get_pairwise_contact_impulse, get_pairwise_contacts
 
 # from transforms3d.euler import euler2quat, quat2euler
 from transforms3d.quaternions import qmult, qconjugate, quat2mat, mat2quat

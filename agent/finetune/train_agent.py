@@ -14,6 +14,7 @@ import random
 
 log = logging.getLogger(__name__)
 from env.gym_utils import make_async
+from env.sapien_utils import make_async_sapien
 
 
 class TrainAgent:
@@ -43,11 +44,11 @@ class TrainAgent:
         env_type = cfg.env.get("env_type", None)
         
         if env_type == "sapien":
-            self.venv = make_async(
+            self.venv = make_async_sapien(
                 cfg.env.name,
                 env_type=env_type,
                 num_envs=cfg.env.n_envs,
-                asynchronous=True,
+                asynchronous=cfg.env.get("asynchronous", True),
                 max_episode_steps=cfg.env.max_episode_steps,
                 record=cfg.env.record,
                 wrappers=cfg.env.get("wrappers", None),
@@ -78,7 +79,9 @@ class TrainAgent:
                 **cfg.env.specific if "specific" in cfg.env else {},
             )
             
-        if not env_type == "furniture":
+        if env_type == "sapien":
+            self.venv.seed(self.seed)
+        elif not env_type == "furniture":
             self.venv.seed(
                 [self.seed + i for i in range(cfg.env.n_envs)]
             )  # otherwise parallel envs might have the same initial states!
