@@ -6,10 +6,14 @@ from collections import OrderedDict, deque
 from .multi_step import repeated_space
 import torch
 import pickle
+import torchvision.transforms as transforms
+import time
+
 from transforms3d.quaternions import quat2mat
 from transforms3d.euler import mat2euler
 from env.sapien_utils.math import get_pose_from_rot_pos
-import torchvision.transforms as transforms
+from env.sapien_utils.base import BaseEnv
+
 
 class HomeBotMultiStepWrapper(gym.Wrapper):
     """
@@ -19,7 +23,7 @@ class HomeBotMultiStepWrapper(gym.Wrapper):
     
     def __init__(
             self, 
-            env, 
+            env: BaseEnv, 
             n_obs_steps=4, 
             n_action_steps=4, 
             max_episode_steps=200, 
@@ -172,6 +176,9 @@ class HomeBotMultiStepWrapper(gym.Wrapper):
                 action: [n_envs, n_action_steps, 10], 
                         normalized action chunk, n_action_steps is the actual execution steps
         """
+        if self.n_obs_steps <= self.n_action_steps:
+            self.obs.clear()
+        
         total_reward = 0
         terminated = False
         truncated = False
@@ -201,6 +208,10 @@ class HomeBotMultiStepWrapper(gym.Wrapper):
         converted_actions = []
 
         for i in range(n_steps_to_execute):
+            if not self.record and i < n_steps_to_execute - self.n_obs_steps:
+                self.env.use_image_obs = False
+            else:
+                self.env.use_image_obs = True
             current_action = action[i] # [10]
 
             mat_6 = current_action[3:9].reshape(3, 2)
@@ -222,15 +233,17 @@ class HomeBotMultiStepWrapper(gym.Wrapper):
             ])
             converted_actions.append(pose_action)
 
+            # t0 = time.time()
             obs, step_reward, step_terminated, step_truncated, step_info = self.env.step(pose_action)
+            # print(f"step {i} time:", time.time() - t0)
             
             if self.record:
-              record_list.append(obs["third-rgb"])
+                record_list.append(obs["third-rgb"])
             
-            single_obs = self.process_observation(obs)
-            self.obs.append(single_obs)
-            if len(self.obs) > self.n_obs_steps:
-                self.obs.popleft()
+            if i >= n_steps_to_execute - self.n_obs_steps:
+                single_obs = self.process_observation(obs)
+                self.obs.append(single_obs)
+            assert len(self.obs) <= self.n_obs_steps
                 
             total_reward += step_reward
             terminated = terminated or step_terminated

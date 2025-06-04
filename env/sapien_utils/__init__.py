@@ -56,7 +56,7 @@ def make_async_sapien(
                         canonical=True
                     )
                     
-                    env = SapienPickAndPlaceWrapper(
+                    env = HomeBotMultiStepWrapper(
                         env,
                         n_obs_steps=obs_steps,
                         n_action_steps=act_steps,

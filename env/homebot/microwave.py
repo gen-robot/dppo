@@ -469,7 +469,7 @@ class MicrowavePushAndPullEnv(BaseEnv):
         # TODO: get obs
         self._update_observation()
         obs = OrderedDict()
-        for key in self.obs_keys:
+        for key in self.observation_dict.keys():
             obs[key] = self.observation_dict[key]
 
         return obs, {}
@@ -548,7 +548,7 @@ class MicrowavePushAndPullEnv(BaseEnv):
         # print(self.objs)
         self._update_observation()
         obs = OrderedDict()
-        for key in self.obs_keys:
+        for key in self.observation_dict.keys():
             obs[key] = self.observation_dict[key]
         
         
