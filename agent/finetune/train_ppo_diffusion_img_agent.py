@@ -49,21 +49,23 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
 
             # Prepare video paths for each envs --- only applies for the first set of episodes if allowing reset within iteration and each iteration has multiple episodes from one env
             options_venv = [{} for _ in range(self.n_envs)]
-            if self.itr % self.render_freq == 0 and self.render_video:
+        
+            render_mode = self.itr % self.render_freq == 0 and self.render_video
+            self.venv.env_method("set_record_mode", render_mode)
+            if render_mode:
+                video_writers = []
                 for env_ind in range(self.n_render):
                     options_venv[env_ind]["video_path"] = os.path.join(
                         self.render_dir, f"itr-{self.itr}_trial-{env_ind}.mp4"
                     )
             
-            ## add record in sapien env
-            if self.venv.record:
-                import imageio
-                video_writer = {"third": imageio.get_writer(
-                    os.path.join( self.render_dir, f"itr-{self.itr}_trial-{env_ind}.mp4"),
-                    fps=20,
-                    format="FFMPEG",
-                    codec="h264",
-                ) }
+                    video_writer = {"third": imageio.get_writer(
+                        os.path.join( self.render_dir, f"itr-{self.itr}_trial-{env_ind}.mp4"),
+                        fps=20,
+                        format="FFMPEG",
+                        codec="h264",
+                    ) }
+                    video_writers.append(video_writer)
 
             # Define train or eval - all envs restart
             eval_mode = self.itr % self.val_freq == 0 and not self.force_train
@@ -128,7 +130,6 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 action_venv = output_venv[:, : self.act_steps]
 
                 # Apply multi-step action
-                import time
                 step_start = time.time()
                 # obj successfully placed
                 success_trajs = np.zeros((self.n_steps, self.n_envs))  
@@ -145,15 +146,16 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 terminated_trajs[step] = terminated_venv
                 firsts_trajs[step + 1] = done_venv
                 ### record in sapien env
-                if self.venv.record:
-                    for i, record in enumerate(record_list):
-                        video_writer["third"].append_data(record)
+                if render_mode:
+                    record_list = info_venv.get("record_list", []) # List[List[tensor: [H, W, 3], n_act], n_envs]
+                    for env_id, (video_writer, env_record) in enumerate(zip(video_writers, record_list)):
+                        for record in env_record:
+                            video_writer["third"].append_data(record)
         
-                if "is_success" in info_venv:
-                    #  [1, act_steps]
-                    success_trajs[step] = np.any(info_venv["is_success"], axis=1) 
-                else:
-                    assert False, "No success info in the environment step"
+                assert ("is_success" in info_venv), "No success info in the environment step"
+                
+                env_success = info_venv["is_success"] # [num_envs, n_act]
+                success_trajs[step] = np.any(env_success.any(axis=-1))
 
                 # update for next step
                 prev_obs_venv = obs_venv
@@ -161,7 +163,7 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 # count steps --- not acounting for done within action chunk
                 cnt_train_step += self.n_envs * self.act_steps if not eval_mode else 0
             ### record in sapien env
-            if self.venv.record:
+            if render_mode:
                 for writer in video_writer.values():
                     writer.close()
                 

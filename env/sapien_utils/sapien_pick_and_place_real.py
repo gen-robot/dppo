@@ -20,7 +20,6 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
     def __init__(
             self, 
             env, 
-            record=False,
             n_obs_steps=4, 
             n_action_steps=4, 
             max_episode_steps=200, 
@@ -30,7 +29,7 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
 
         super().__init__(env)
         self.seed_value = None
-        self.record = record
+        self.record = False
         self.normalization_path = normalization_path
         self.asynchronous = asynchronous
 
@@ -83,6 +82,9 @@ class SapienPickAndPlaceWrapper(gym.Wrapper):
         
         if hasattr(self.env, 'max_episode_steps'):
             self.env.max_episode_steps = self.max_episode_steps
+            
+    def set_record_mode(self, record_mode):
+        self.record = record_mode
     
     def process_observation(self, obs):
         """

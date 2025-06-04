@@ -3,7 +3,7 @@ def make_async_sapien(
     num_envs=1,
     asynchronous=True,
     wrappers=None,
-    render=False,
+    use_gui=False,
     obs_dim=23,
     action_dim=7,
     env_type=None,
@@ -36,7 +36,7 @@ def make_async_sapien(
                     env_seed = kwargs.get('seed', 0) + idx if 'seed' in kwargs else None
                     
                     env = PickAndPlaceEnv(
-                        use_gui=(render and idx == 0), # only record in the first environment
+                        use_gui=(use_gui and idx == 0), # only record in the first environment
                         device=device,
                         obs_keys=("tcp_pose", "gripper_width", "privileged_obs", "third-rgb"),
                         use_image_obs=use_image_obs,
@@ -47,7 +47,6 @@ def make_async_sapien(
                     
                     env = SapienPickAndPlaceWrapper(
                         env,
-                        record=record and idx == 0,  # only record in the first environment
                         n_obs_steps=obs_steps,
                         n_action_steps=act_steps,
                         max_episode_steps=max_episode_steps,
@@ -62,7 +61,7 @@ def make_async_sapien(
             return venv
         else:
             env = PickAndPlaceEnv(
-                use_gui=render,
+                use_gui=use_gui,
                 device=device,
                 obs_keys=("tcp_pose", "gripper_width", "privileged_obs", "third-rgb"),
                 use_image_obs=use_image_obs,
@@ -72,7 +71,6 @@ def make_async_sapien(
             )   
             env = SapienPickAndPlaceWrapper(
                 env,
-                record=record,
                 n_obs_steps=obs_steps,
                 n_action_steps=act_steps,
                 max_episode_steps=max_episode_steps,
