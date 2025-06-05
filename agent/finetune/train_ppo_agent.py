@@ -32,7 +32,7 @@ class TrainPPOAgent(TrainAgent):
 
         # Optimizer
         self.actor_optimizer = torch.optim.AdamW(
-            self.model.actor_ft.parameters(),
+            filter(lambda p: p.requires_grad, self.model.actor_ft.parameters()),
             lr=cfg.train.actor_lr,
             weight_decay=cfg.train.actor_weight_decay,
         )
@@ -91,7 +91,7 @@ class TrainPPOAgent(TrainAgent):
     def reset_actor_optimizer(self):
         """Not used anywhere currently"""
         new_optimizer = torch.optim.AdamW(
-            self.model.actor_ft.parameters(),
+            filter(lambda p: p.requires_grad, self.model.actor_ft.parameters()),
             lr=self.cfg.train.actor_lr,
             weight_decay=self.cfg.train.actor_weight_decay,
         )

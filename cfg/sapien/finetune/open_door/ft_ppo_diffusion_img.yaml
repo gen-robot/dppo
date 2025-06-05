@@ -7,12 +7,12 @@ _target_: agent.finetune.train_ppo_diffusion_img_agent.TrainPPOImgDiffusionAgent
 
 name: ${env_name}_ppo_diffusion_ta${horizon_steps}_td${denoising_steps}_tdf${ft_denoising_steps}
 logdir: /home/zhouzhiting/Projects/dppo/sapien-finetune/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
-base_policy_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/cano_2/policy_step_254000_seed_0.ckpt  
-normalization_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/cano_2/norm_stats_1.pkl  
+base_policy_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/open_door/policy_step_500000_seed_0.ckpt
+normalization_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/open_door/norm_stats_1.pkl
 
 seed: 42
 device: cuda:0
-env_name: pick_and_place
+env_name: open_door
 obs_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1)
 action_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1) 
 denoising_steps: 50  
@@ -33,7 +33,7 @@ env:
   use_gui: False
   save_video: True
 
-  best_reward_threshold_for_success: 1.0
+  best_reward_threshold_for_success: 5.0
   video_dir: /home/zhouzhiting/dppo/videos/pick_and_place
   use_image_obs: True
   reset_at_iteration: True  # mixture obj? single obj?
@@ -53,10 +53,10 @@ wandb:
   entity: "zhou-zt21-tsinghua-university"
   project: dppo-sapien-${env_name}
   run: ${now:%H-%M-%S}_${name}
-  mode: "offline"  # "online" or "offline"
+  mode: "disabled"  # "online" or "offline"
 
 train:
-  n_train_itr: 1000  
+  n_train_itr: 1000
   n_critic_warmup_itr: 2 
   n_steps: 40
   gamma: 0.999 
@@ -118,34 +118,29 @@ model:
     action_dim: ${action_dim}
     global_obs_dim: ${obs_dim}
     num_inference_timesteps: ${ft_denoising_steps}
-  # critic:
-  #   _target_: model.common.critic.ViTCritic
-  #   spatial_emb: 128
-  #   augment: False
-  #   backbone:
-  #     _target_: model.common.vit.VitEncoder
-  #     obs_shape: ${shape_meta.obs.rgb.shape}
-  #     num_channel: ${eval:'3 * ${img_cond_steps}'} # each image patch is history concatenated
-  #     img_h: ${shape_meta.obs.rgb.shape[1]}
-  #     img_w: ${shape_meta.obs.rgb.shape[2]}
-  #     cfg:
-  #       patch_size: 8
-  #       depth: 1
-  #       embed_dim: 128
-  #       num_heads: 4
-  #       embed_style: embed2
-  #       embed_norm: 0
-  #   img_cond_steps: ${img_cond_steps}
-  #   mlp_dims: [256, 256, 256]
-  #   activation_type: Mish
-  #   residual_style: True
-  #   cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
   critic:
-    _target_: model.resnet.critic.ResNetCritic
+    _target_: model.common.critic.ViTCritic
+    spatial_emb: 128
+    augment: False
+    backbone:
+      _target_: model.common.vit.VitEncoder
+      obs_shape: ${shape_meta.obs.rgb.shape}
+      num_channel: ${eval:'3 * ${img_cond_steps}'} # each image patch is history concatenated
+      img_h: ${shape_meta.obs.rgb.shape[1]}
+      img_w: ${shape_meta.obs.rgb.shape[2]}
+      cfg:
+        patch_size: 8
+        depth: 1
+        embed_dim: 128
+        num_heads: 4
+        embed_style: embed2
+        embed_norm: 0
+    img_cond_steps: ${img_cond_steps}
     mlp_dims: [256, 256, 256]
     activation_type: Mish
     residual_style: True
-    backbone_ckpt: ${base_policy_path}
+    cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
+
   ft_denoising_steps: ${ft_denoising_steps}
   horizon_steps: ${horizon_steps}
   obs_dim: ${obs_dim}

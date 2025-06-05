@@ -565,12 +565,12 @@ class MicrowavePushAndPullEnv(BaseEnv):
     def compute_dense_reward(self, actor, pre_pose):
         reward = 0.0
         
-        # reaching reward
-        tcp_pose = self._get_tcp_pose()
-        handle_pose = self.get_microwave_link_pose()
-        tcp_to_handle_dist = np.linalg.norm(tcp_pose.p - handle_pose.p)
-        reaching_reward = 1.0 - np.tanh(5.0 * tcp_to_handle_dist)
-        reward += reaching_reward
+        # # reaching reward
+        # tcp_pose = self._get_tcp_pose()
+        # handle_pose = self.get_microwave_link_pose()
+        # tcp_to_handle_dist = np.linalg.norm(tcp_pose.p - handle_pose.p)
+        # reaching_reward = 1.0 - np.tanh(5.0 * tcp_to_handle_dist)
+        # reward += reaching_reward
         
         if not self.has_open:
             door_open_amount = max(0, self.microwaves[0].get_qpos()[0])

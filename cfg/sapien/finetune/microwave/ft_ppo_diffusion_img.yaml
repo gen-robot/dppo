@@ -7,8 +7,8 @@ _target_: agent.finetune.train_ppo_diffusion_img_agent.TrainPPOImgDiffusionAgent
 
 name: ${env_name}_ppo_diffusion_ta${horizon_steps}_td${denoising_steps}_tdf${ft_denoising_steps}
 logdir: /home/zhouzhiting/Projects/dppo/sapien-finetune/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
-base_policy_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/microwave/policy_step_510000_seed_0.ckpt
-normalization_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/microwave/norm_stats_1.pkl
+base_policy_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/open_door/policy_step_500000_seed_0.ckpt
+normalization_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/open_door/norm_stats_1.pkl
 
 seed: 42
 device: cuda:0
@@ -16,7 +16,7 @@ env_name: microwave
 obs_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1)
 action_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1) 
 denoising_steps: 50  
-ft_denoising_steps: 4
+ft_denoising_steps: 5
 cond_steps: 1
 img_cond_steps: 1 
 horizon_steps: 20
@@ -78,7 +78,7 @@ train:
   val_freq: 10
   render:
     freq: 10
-    num: 10
+    num: 5
   # PPO specific
   reward_scale_running: True
   reward_scale_const: 1.0

@@ -80,6 +80,12 @@ class DiffusionModel(nn.Module):
             )
             ## only support diffusion_unet Class DiffusionPolicy
             self.network.deserialize(checkpoint)
+            
+            for param in self.network.nets["obs_encoder"].parameters():
+                param.requires_grad = False
+                
+            
+            
 
             ## other networks
             # if "ema" in checkpoint:
