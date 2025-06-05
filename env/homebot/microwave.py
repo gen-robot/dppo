@@ -575,7 +575,7 @@ class MicrowavePushAndPullEnv(BaseEnv):
         if not self.has_open:
             door_open_amount = max(0, self.microwaves[0].get_qpos()[0])
         
-            open_reward = 2 * (1 - (self.target_open_amount - door_open_amount))
+            # open_reward = 2 * (1 - (self.target_open_amount - door_open_amount))
             if door_open_amount > self.target_open_amount:
                 open_reward = 2
                 self.has_open = True
@@ -585,7 +585,7 @@ class MicrowavePushAndPullEnv(BaseEnv):
         if self.has_open and not self.has_close_after_open:
             door_open_amount = max(0, self.microwaves[0].get_qpos()[0])
         
-            close_reward = 2 * (1 -  door_open_amount)
+            # close_reward = 2 * (1 -  door_open_amount)
             if door_open_amount < 1e-3:
                 close_reward = 2
                 self.has_close_after_open = True
