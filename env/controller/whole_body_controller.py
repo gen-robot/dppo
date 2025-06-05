@@ -2,6 +2,7 @@ import numpy as np
 import sapien.core as sapien
 
 
+
 class BaseArmSimpleController:
     def __init__(self, robot: sapien.Articulation) -> None:
         self.robot = robot
@@ -33,7 +34,7 @@ class BaseArmSimpleController:
         self._desired_ee_pose: sapien.Pose = None
 
     def compute_q_target(
-        self, base_veloocity: np.ndarray, ee_pose: sapien.Pose, finger_width: float
+        self,  ee_pose: sapien.Pose, finger_width: float, base_velocity: np.ndarray = np.zeros(2, dtype=np.float32)
     ):
         """
         base_velocity: shape (2,), yaw velocity and forward velocity
@@ -43,7 +44,9 @@ class BaseArmSimpleController:
         cur_base_pose = self.robot.get_pose()
         initial_q = self.robot.get_qpos()
         desired_q = initial_q.copy()
-        desired_q[self.mobile_base_joint_indices] = base_veloocity
+        if len(self.mobile_base_joint_indices) > 0:
+            desired_q[self.mobile_base_joint_indices] = base_velocity
+    
         # in articulation base frame
         robot_desired_pose = cur_base_pose.inv().transform(ee_pose)
         # print("base_to_desired", robot_desired_pose)

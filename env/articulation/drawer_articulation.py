@@ -6,7 +6,7 @@ from matplotlib.colors import hsv_to_rgb, rgb_to_hsv
 from typing import List
 
 # from pathlib import Path
-ASSET_DIR = os.path.join(os.path.dirname(__file__), "../../asset")
+ASSET_DIR = "/data1/zhouzhiting/Data/panda_data/asset"
 
 
 def load_drawer_urdf(scene: sapien.Scene, scale=1.0):
@@ -15,7 +15,7 @@ def load_drawer_urdf(scene: sapien.Scene, scale=1.0):
     loader.load_multiple_collisions_from_file = True
     loader.scale = scale
     urdf_path = os.path.join(
-        os.path.dirname(__file__), "../../asset/furniture/drawer_r.urdf" 
+        ASSET_DIR, "furniture/drawer_r.urdf" 
     )
     drawer_articulation = loader.load(
         urdf_path,

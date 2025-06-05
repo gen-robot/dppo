@@ -7,12 +7,13 @@ from enum import IntEnum
 class ArmControlMode(IntEnum):
     EEF_POS = 0
 
+ASSET_PATH = "/data1/zhouzhiting/Code/copy/homebot/asset"
 
 def load_robot_full(scene: sapien.Scene, arm_control_mode=ArmControlMode.EEF_POS):
     finger_link_idxs = []
     loader = scene.create_urdf_loader()
     filename = os.path.join(
-        os.path.dirname(__file__), "../../asset/xarm7_with_gripper.urdf"
+        ASSET_PATH, "xarm7_with_gripper.urdf"
     )
     robot_builder = loader.load_file_as_articulation_builder(filename)
     for link_builder in robot_builder.get_link_builders():

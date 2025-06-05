@@ -1,6 +1,8 @@
 import torch
 from env.homebot.pick_and_place_panda_real_rl import PickAndPlaceEnv
 from env.homebot.microwave import MicrowavePushAndPullEnv
+from env.homebot.open_door import OpenDoorEnv
+from env.homebot.drawer import DrawerPushAndPullEnv
 
 from env.sapien_utils.homebot_multistep_wrapper import HomeBotMultiStepWrapper
 from env.sapien_utils.subproc_vec_env import SubprocVecEnv
@@ -8,7 +10,9 @@ from env.sapien_utils.subproc_vec_env import SubprocVecEnv
 
 HOMEBOT_ENV_DICT = {
     "pick_and_place": PickAndPlaceEnv, 
-    "microwave": MicrowavePushAndPullEnv
+    "microwave": MicrowavePushAndPullEnv, 
+    "open_door": OpenDoorEnv, 
+    "drawer": DrawerPushAndPullEnv
 }
 
 def make_async_sapien(

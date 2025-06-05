@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sapien.core as sapien
 from matplotlib.colors import hsv_to_rgb, rgb_to_hsv
+import random
 
 
 ASSET_DIR = os.path.join(os.path.dirname(__file__), "../../asset")
@@ -200,7 +201,62 @@ def load_lab_door(
     # right wall
     wall_frame.add_box_collision(sapien.Pose(right_wall_pos), right_wall_size / 2)
     wall_frame.add_box_visual(sapien.Pose(right_wall_pos), right_wall_size / 2)
-    door_board_color_hsv = rgb_to_hsv(np.array([0.973, 0.757, 0.478]))
+    
+    # 颜色明显区分的 RGB 列表
+    '''
+    color_options_rgb = [
+        [1.0, 0.0, 0.0],        # 1.Red
+        [1.0, 0.5, 0.0],        # 2.Orange
+        [1.0, 1.0, 0.0],        # 3.Yellow
+        [0.2, 0.8, 0.6],        # 4.Mint Green
+        [0.0, 1.0, 0.0],        # 5.Green
+        [0.2, 1.0, 0.8],        # 6.Light Turquoise
+        [0.0, 1.0, 1.0],        # 7.Cyan
+        [0.0, 0.5, 1.0],        # 8.Sky Blue
+        [0.0, 0.0, 1.0],        # 9.Blue
+        [0.5, 0.0, 1.0],        # 10.Violet
+        [1.0, 0.0, 1.0],        # 11.Magenta
+        [1.0, 0.0, 0.5],        # 12.Pink
+        [0.5, 0.5, 0.5],        # 13.Gray
+        [0.6, 0.4, 0.0],        # 14.Brown
+        [0.4, 0.6, 0.0],        # 15.Olive Green
+        [0.0, 0.6, 0.4],        # 16.Teal
+        [0.0, 0.4, 0.6],        # 17.Steel Blue
+        [0.4, 0.0, 0.6],        # 18.Indigo
+        [0.6, 0.0, 0.4],        # 19.Plum
+        [0.6, 0.6, 0.0],        # 20.Mustard
+    ]
+    '''
+    # new list
+    color_options_rgb = [
+        [1.0, 0.0, 0.0],        # 1.Red
+        [1.0, 0.5, 0.0],        # 2.Orange
+        [1.0, 1.0, 0.0],        # 3.Yellow
+        [0.2, 0.8, 0.6],        # 4.Mint Green
+        [0.0, 1.0, 0.0],        # 5.Green
+        [0.0, 0.0, 0.0],        # 6. Black
+        [0.0, 1.0, 1.0],        # 7.Cyan
+        [0.0, 0.5, 1.0],        # 8.Sky Blue
+        [0.0, 0.0, 1.0],        # 9.Blue
+        [0.5, 0.0, 1.0],        # 10.Violet
+        [1.0, 0.0, 1.0],        # 11.Magenta
+        [1.0, 0.0, 0.5],        # 12.Pink
+        [0.5, 0.5, 0.5],        # 13.Gray
+        [0.6, 0.4, 0.0],        # 14.Brown
+        [0.4, 0.6, 0.0],        # 15.Olive Green
+        [0.0, 0.1, 0.4],        # 16. Navy Blue
+        [0.0, 0.4, 0.6],        # 17.Steel Blue
+        [0.4, 0.0, 0.2],        # 18. Maroon
+        [1.0, 0.8, 0.9],        # 19. Very Light Pink
+        [0.6, 0.6, 0.0],        # 20.Mustard
+    ]
+    # 随机选择一种颜色
+    random_rgb = np.array(random.choice(color_options_rgb))
+
+    # 转换为 HSV
+    door_board_color_hsv = rgb_to_hsv(random_rgb)
+    #door_board_color_hsv = rgb_to_hsv(np.array([0.973, 0.757, 0.478]))
+    
     door_board_color = hsv_to_rgb(
         np.array(
             [
@@ -425,7 +481,7 @@ def load_lab_scene_urdf(scene: sapien.Scene):
     loader.fix_root_link = True
     loader.load_multiple_collisions_from_file = True
     urdf_path = os.path.join(
-        os.path.dirname(__file__), "../../asset/2004/mobility_cvx.urdf"
+        os.path.dirname(__file__), "../../../asset/2004/mobility_cvx.urdf"
     )
     door_articulation = loader.load(
         urdf_path,
