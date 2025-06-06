@@ -150,3 +150,8 @@ cfg/robomimic/*.sh
 tmp
 sapien-finetune
 video
+
+# asset/
+
+asset/mani_skill2_egad/egad_train_set
+asset/mani_skill2_egad/egad_train_set_coacd
