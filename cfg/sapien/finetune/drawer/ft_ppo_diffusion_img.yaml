@@ -7,8 +7,8 @@ _target_: agent.finetune.train_ppo_diffusion_img_agent.TrainPPOImgDiffusionAgent
 
 name: ${env_name}_ppo_diffusion_ta${horizon_steps}_td${denoising_steps}_tdf${ft_denoising_steps}
 logdir: /home/zhouzhiting/Projects/dppo/sapien-finetune/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
-base_policy_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/open_door/policy_step_500000_seed_0.ckpt
-normalization_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/open_door/norm_stats_1.pkl
+base_policy_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/drawer/policy_step_280000_seed_0.ckpt
+normalization_path: /data1/zhouzhiting/Data/panda_data/dppo/pretrain/drawer/norm_stats_1.pkl
 
 seed: 42
 device: cuda:0

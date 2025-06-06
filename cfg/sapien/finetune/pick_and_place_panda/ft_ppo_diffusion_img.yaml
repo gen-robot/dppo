@@ -118,34 +118,34 @@ model:
     action_dim: ${action_dim}
     global_obs_dim: ${obs_dim}
     num_inference_timesteps: ${ft_denoising_steps}
-  # critic:
-  #   _target_: model.common.critic.ViTCritic
-  #   spatial_emb: 128
-  #   augment: False
-  #   backbone:
-  #     _target_: model.common.vit.VitEncoder
-  #     obs_shape: ${shape_meta.obs.rgb.shape}
-  #     num_channel: ${eval:'3 * ${img_cond_steps}'} # each image patch is history concatenated
-  #     img_h: ${shape_meta.obs.rgb.shape[1]}
-  #     img_w: ${shape_meta.obs.rgb.shape[2]}
-  #     cfg:
-  #       patch_size: 8
-  #       depth: 1
-  #       embed_dim: 128
-  #       num_heads: 4
-  #       embed_style: embed2
-  #       embed_norm: 0
-  #   img_cond_steps: ${img_cond_steps}
-  #   mlp_dims: [256, 256, 256]
-  #   activation_type: Mish
-  #   residual_style: True
-  #   cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
   critic:
-    _target_: model.resnet.critic.ResNetCritic
+    _target_: model.common.critic.ViTCritic
+    spatial_emb: 128
+    augment: False
+    backbone:
+      _target_: model.common.vit.VitEncoder
+      obs_shape: ${shape_meta.obs.rgb.shape}
+      num_channel: ${eval:'3 * ${img_cond_steps}'} # each image patch is history concatenated
+      img_h: ${shape_meta.obs.rgb.shape[1]}
+      img_w: ${shape_meta.obs.rgb.shape[2]}
+      cfg:
+        patch_size: 8
+        depth: 1
+        embed_dim: 128
+        num_heads: 4
+        embed_style: embed2
+        embed_norm: 0
+    img_cond_steps: ${img_cond_steps}
     mlp_dims: [256, 256, 256]
     activation_type: Mish
     residual_style: True
-    backbone_ckpt: ${base_policy_path}
+    cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
+  # critic:
+  #   _target_: model.resnet.critic.ResNetCritic
+  #   mlp_dims: [256, 256, 256]
+  #   activation_type: Mish
+  #   residual_style: True
+  #   backbone_ckpt: ${base_policy_path}
   ft_denoising_steps: ${ft_denoising_steps}
   horizon_steps: ${horizon_steps}
   obs_dim: ${obs_dim}
