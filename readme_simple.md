@@ -3,6 +3,9 @@
 ## 基础说明
 本代码基于 [DPPO](https://github.com/irom-princeton/dppo) 官方代码库开发。已接入 homebot 仓库中的环境和对应的扩散策略网络。
 
+## 环境配置
+使用dppo_sapien.yaml创建Conda环境，并 `pip intall -e.`。 
+
 ## 环境说明
 涉及抓放物体、推拉抽屉、门窗、微波炉等环境。路径置于 ``env/homebot`` 之下。和 homebot 仓库中环境的区别在于加入了简单的奖励函数设计。
 物体资产与 homebot 仓库一致。
