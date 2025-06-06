@@ -5,6 +5,7 @@
 
 ## 环境配置
 使用dppo_sapien.yaml创建Conda环境，并 `pip intall -e.`。 
+如需要maniskill egad数据集，需要去egad网站下载解压，并使用coacd计算碰撞（目前dppo脚本中暂时不用egad数据集）。
 
 ## 环境说明
 涉及抓放物体、推拉抽屉、门窗、微波炉等环境。路径置于 ``env/homebot`` 之下。和 homebot 仓库中环境的区别在于加入了简单的奖励函数设计。
