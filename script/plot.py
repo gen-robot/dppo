@@ -305,11 +305,7 @@ class ExperimentVisualizer:
 
 if __name__ == "__main__":
     # 使用示例
-    # log_dir = "/home/zhouzhiting/Projects/dppo/sapien-finetune/microwave_ppo_diffusion_ta20_td50_tdf4/2025-06-05_13-53-25_42"  # 修改为您的日志目录
-    # log_dir = "/home/zhouzhiting/Projects/dppo/sapien-finetune/wuqiong2/piack_and_place"  # 修改为您的日志目录
-    # log_dir = "/home/zhouzhiting/Projects/dppo/sapien-finetune/wuqiong2/microwave"
-    log_dir = "/home/zhouzhiting/Projects/dppo/sapien-finetune/open_door_ppo_diffusion_ta20_td50_tdf4/2025-06-05_15-02-06_42"
-
+    log_dir = "/home/zhouzhiting/Projects/dppo/sapien-finetune/drawer_ppo_diffusion_ta20_td50_tdf5/2025-06-05_17-48-16_42"  # 修改为您的日志目录
     log_filename = "run.log"  # 修改为您的日志文件名
     
     visualizer = ExperimentVisualizer(log_dir)
