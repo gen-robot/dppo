@@ -575,22 +575,22 @@ class MicrowavePushAndPullEnv(BaseEnv):
         if not self.has_open:
             door_open_amount = max(0, self.microwaves[0].get_qpos()[0])
         
-            # open_reward = 2 * (1 - (self.target_open_amount - door_open_amount))
+            open_reward = 2 * (1 - (self.target_open_amount - door_open_amount))
             if door_open_amount > self.target_open_amount:
                 open_reward = 2
                 self.has_open = True
                 
-                reward += open_reward
+            reward += open_reward
         
         if self.has_open and not self.has_close_after_open:
             door_open_amount = max(0, self.microwaves[0].get_qpos()[0])
         
-            # close_reward = 2 * (1 -  door_open_amount)
+            close_reward = 2 * (1 -  door_open_amount)
             if door_open_amount < 1e-3:
                 close_reward = 2
                 self.has_close_after_open = True
                 
-                reward += close_reward
+            reward += close_reward
         
         if self.has_open and self.has_close_after_open:
             self.is_success = True
@@ -709,7 +709,26 @@ class MicrowavePushAndPullEnv(BaseEnv):
                 desired_grasp_pose,
                 desired_gripper_width,
             )
+        # elif self.expert_phase == 2:
+        #     # version1 : only close gripper
+        #     gripper_width = self._get_gripper_width()
+        #     tcp_pose = self._get_tcp_pose()
+        #     desired_grasp_pose = tcp_pose  
+            
+        #     apply_noise_to_pose(desired_grasp_pose)
+
+        #     desired_gripper_width = (
+        #             gripper_width - self.gripper_scale  
+        #             + self.np_random.uniform(-self.gripper_scale / 2, self.gripper_scale / 2) * noise_scale
+        #     )
+        #     desired_gripper_width = np.clip(desired_gripper_width, 0, self.gripper_limit)
+        
+        #     action = self._desired_tcp_to_action(
+        #         desired_grasp_pose,
+        #         desired_gripper_width,
+        #     )
         elif self.expert_phase == 2:
+            # version2 : rotate and close gripper
             gripper_width = self._get_gripper_width()
 
             tcp_pose = self._get_tcp_pose()
@@ -812,7 +831,7 @@ class MicrowavePushAndPullEnv(BaseEnv):
                 self.done = True
             elif self.expert_phase == 2:
                 # print(gripper_width, self.gripper_scale, desired_gripper_width)
-                if gripper_width < self.gripper_scale:
+                if gripper_width < 0.01:  # self.gripper_scale:
                     self.expert_phase += 1
             else:
                 self.expert_phase += 1
