@@ -16,6 +16,10 @@
 
 * [08/30/24] [DPPO](https://diffusion-ppo.github.io/) codebase and technical whitepaper are released.  -->
 
+## Brief Introduction
+
+- 接入sapien的DPPO实现的简要介绍、使用方法见 readme_simple.md
+
 ## Installation 
 
 1. Clone the repository
