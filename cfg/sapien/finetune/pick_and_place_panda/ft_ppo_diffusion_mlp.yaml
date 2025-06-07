@@ -1,0 +1,149 @@
+defaults:
+  - _self_
+hydra:
+  run:
+    dir: ${logdir}
+_target_: agent.finetune.train_ppo_diffusion_agent.TrainPPODiffusionAgent
+
+name: ${env_name}_ppo_diffusion_mlp_ta${horizon_steps}_td${denoising_steps}_tdf${ft_denoising_steps}
+logdir: ${oc.env:DPPO_LOG_DIR}/sapien-finetune/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
+base_policy_path: /home/susichang/sichang/dppo/policy_step_250000_seed_0.ckpt
+
+# 环境数据路径
+asset_dir: /home/susichang/sichang/dppo/asset/mani_skill2_egad
+egad_train_set: ${asset_dir}/egad_train_set
+egad_train_set_coacd: ${asset_dir}/egad_train_set_coacd
+info_pick_train: ${asset_dir}/info_pick_train_v1.json
+
+# 机器人模型路径
+robot_dir: /home/susichang/sichang/dppo/asset/franka_panda
+robot_urdf: /home/susichang/sichang/dppo/asset/franka_panda/panda.urdf
+
+seed: 42
+device: cuda:7
+env_name: pick_and_place_panda
+obs_dim: 23  # tcp_pose (7) + gripper_width (1) + robot_joints (7) + privileged_obs (8)
+action_dim: 7
+denoising_steps: 20
+ft_denoising_steps: 10
+cond_steps: 1
+horizon_steps: 4
+act_steps: 4
+
+env:
+  n_envs: 1
+  name: ${env_name}
+  env_type: "sapien"
+  max_episode_steps: 200
+  reset_at_iteration: False
+  save_video: False
+  render: False
+  render_mode: "rgb_array"
+  render_width: 128
+  render_height: 128
+  best_reward_threshold_for_success: 1.0
+  record_video: false
+  video_dir: /home/susichang/sichang/dppo/videos/pick_and_place
+  # SAPIEN渲染器配置
+  renderer:
+    offscreen_only: True
+    max_num_materials: 5000
+    max_num_textures: 5000
+    default_mipmap_levels: 1
+    device: 'cuda'
+    culling: 'back'
+    do_not_load_texture: False
+  # 环境数据配置
+  asset_config:
+    asset_dir: ${asset_dir}
+    egad_train_set: ${egad_train_set}
+    egad_train_set_coacd: ${egad_train_set_coacd}
+    info_pick_train: ${info_pick_train}
+    robot_dir: ${robot_dir}
+    robot_urdf: ${robot_urdf}
+  wrappers:
+    sapien_pick_and_place:
+      max_episode_steps: ${env.max_episode_steps}
+      reward_scale: 0.1
+    multi_step:
+      n_obs_steps: ${cond_steps}
+      n_action_steps: ${act_steps}
+      max_episode_steps: ${env.max_episode_steps}
+      reset_within_step: True
+
+# 启用wandb
+wandb:
+  entity: "destiny0621"
+  project: sapien-${env_name}-finetune
+  run: ${now:%H-%M-%S}_${name}
+
+train:
+  n_train_itr: 1000
+  n_critic_warmup_itr: 0
+  n_steps: 500
+  gamma: 0.99
+  actor_lr: 1e-4
+  actor_weight_decay: 0
+  actor_lr_scheduler:
+    first_cycle_steps: 1000
+    warmup_steps: 10
+    min_lr: 1e-4
+  critic_lr: 1e-3
+  critic_weight_decay: 0
+  critic_lr_scheduler:
+    first_cycle_steps: 1000
+    warmup_steps: 10
+    min_lr: 1e-3
+  save_model_freq: 100
+  val_freq: 10
+  render:
+    freq: 1
+    num: 0
+  # PPO specific
+  reward_scale_running: True
+  reward_scale_const: 1.0
+  gae_lambda: 0.95
+  batch_size: 50000
+  update_epochs: 5
+  vf_coef: 0.5
+  target_kl: 1
+
+model:
+  _target_: model.diffusion.diffusion_ppo.PPODiffusion
+  # HP to tune
+  gamma_denoising: 0.99
+  clip_ploss_coef: 0.01
+  clip_ploss_coef_base: 0.01
+  clip_ploss_coef_rate: 3
+  randn_clip_value: 3
+  min_sampling_denoising_std: 0.1
+  min_logprob_denoising_std: 0.1
+  #
+  network_path: ${base_policy_path}
+  actor:
+    _target_: model.diffusion.mlp_diffusion.DiffusionMLP
+    time_dim: 16
+    mlp_dims: [512, 512, 512]
+    activation_type: ReLU
+    residual_style: True
+    cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
+    horizon_steps: ${horizon_steps}
+    action_dim: ${action_dim}
+  critic:
+    _target_: model.common.critic.CriticObs
+    cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
+    mlp_dims: [256, 256, 256]
+    activation_type: Mish
+    residual_style: True
+  ft_denoising_steps: ${ft_denoising_steps}
+  horizon_steps: ${horizon_steps}
+  obs_dim: ${obs_dim}
+  action_dim: ${action_dim}
+  denoising_steps: ${denoising_steps}
+  device: ${device}
+
+logging:
+  log_interval: 10
+  save_interval: 100
+  eval_interval: 100
+  n_eval_episodes: 10
