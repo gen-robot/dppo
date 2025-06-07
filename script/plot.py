@@ -52,21 +52,23 @@ class ExperimentVisualizer:
             # 修改评估数据匹配模式
             eval_pattern = re.compile(r'\[.*?\]\[.*?\]\[INFO\] - eval: success rate\s+([\d\.]+) \|avg episode reward\s+([\d\.\-]+) \| avg best reward\s+([\d\.]+) \| episode whole success rate\s+([\d\.]+) \| action step in episode success rate\s+([\d\.]+)')
             
+            step = 0
+
             for line in lines:
                 # 尝试匹配训练数据行
-                train_match = train_pattern.search(line)
-                if train_match:
-                    iteration = int(train_match.group(1))
-                    step = int(train_match.group(2))
-                    episode_whole_success_rate = float(train_match.group(3))
-                    avg_episode_reward = float(train_match.group(4))
-                    avg_best_reward = float(train_match.group(5))
+                # train_match = train_pattern.search(line)
+                # if train_match:
+                #     iteration = int(train_match.group(1))
+                #     step = int(train_match.group(2))
+                #     episode_whole_success_rate = float(train_match.group(3))
+                #     avg_episode_reward = float(train_match.group(4))
+                #     avg_best_reward = float(train_match.group(5))
                     
-                    self.data['steps'].append(step)
-                    self.data['episode_whole_success_rate'].append((step, episode_whole_success_rate))
-                    self.data['avg_episode_reward'].append((step, avg_episode_reward))
-                    self.data['avg_best_reward'].append((step, avg_best_reward))
-                    continue
+                #     self.data['steps'].append(step)
+                #     self.data['episode_whole_success_rate'].append((step, episode_whole_success_rate))
+                #     self.data['avg_episode_reward'].append((step, avg_episode_reward))
+                #     self.data['avg_best_reward'].append((step, avg_best_reward))
+                #     continue
                 
                 # 尝试匹配评估数据行
                 eval_match = eval_pattern.search(line)
@@ -77,25 +79,28 @@ class ExperimentVisualizer:
                     episode_whole_success_rate = float(eval_match.group(4))
                     action_step_in_episode_success_rate = float(eval_match.group(5))
                     
-                    # 对于评估数据，我们使用当前步骤作为step值（假设这是在训练步骤之后的评估）
-                    step = 0  # 默认值
-                    if len(self.data['steps']) > 0:
-                        step = self.data['steps'][-1]  # 使用最近的训练步骤
+                    # step = 0  # 默认值
+                    # if len(self.data['steps']) > 0:
+                    #     step = self.data['steps'][-1]  # 使用最近的训练步骤
                     
+                    self.data['avg_episode_reward'].append((step, avg_episode_reward))
+                    self.data['avg_best_reward'].append((step, avg_best_reward))
+                    self.data['episode_whole_success_rate'].append((step, episode_whole_success_rate))
                     self.data['success_rate'].append((step, success_rate))
                     self.data['action_step_in_episode_success_rate'].append((step, action_step_in_episode_success_rate))
                     
-                    # 如果使用第一个评估步骤（还没有训练步骤），则添加到steps列表
-                    if step not in self.data['steps'] and len(self.data['steps']) == 0:
-                        self.data['steps'].append(step)
+                    # if step not in self.data['steps'] and len(self.data['steps']) == 0:
+                    self.data['steps'].append(step)
+                    
+                step = step + 10
                     
             # 去重并排序steps
-            self.data['steps'] = sorted(list(set(self.data['steps'])))
+            # self.data['steps'] = sorted(list(set(self.data['steps'])))
             
             # 排序所有指标数据
-            for key in self.data:
-                if key != 'steps':
-                    self.data[key].sort(key=lambda x: x[0])
+            # for key in self.data:
+            #     if key != 'steps':
+            #         self.data[key].sort(key=lambda x: x[0])
             
             print(f"成功加载数据，共{len(self.data['steps'])}个步骤")
             
@@ -305,8 +310,8 @@ class ExperimentVisualizer:
 
 if __name__ == "__main__":
     # 使用示例
-    log_dir = "/home/zhouzhiting/Projects/dppo/sapien-finetune/drawer_ppo_diffusion_ta20_td50_tdf5/2025-06-05_17-48-16_42"  # 修改为您的日志目录
-    log_filename = "run.log"  # 修改为您的日志文件名
+    log_dir = "/home/zhouzhiting/Projects/dppo/sapien-finetune/wuqiong2/microwave"  # 修改为您的日志目录
+    log_filename = "run_microwave.log"  # 修改为您的日志文件名
     
     visualizer = ExperimentVisualizer(log_dir)
     visualizer.run_visualization(log_filename)
