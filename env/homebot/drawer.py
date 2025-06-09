@@ -560,7 +560,8 @@ class DrawerPushAndPullEnv(BaseEnv):
                 "init_base_pose": self.init_base_pose,
             }
         )
-        return obs, reward, self.is_success, False, info
+        return obs, reward, False, False, info
+        # return obs, reward, self.is_success, False, info
 
     def compute_dense_reward(self, drawer_id=1):
         reward = 0.0
@@ -588,6 +589,7 @@ class DrawerPushAndPullEnv(BaseEnv):
             
         # close reward
         if self.has_open and not self.has_close_after_open:
+            reward += 2
             open_amount = max(0, self.drawers[drawer_id].get_qpos()[0])
             close_reward = 2 * (1 - open_amount)
             if open_amount < 1e-3:
@@ -597,8 +599,10 @@ class DrawerPushAndPullEnv(BaseEnv):
         
         if self.has_open and self.has_close_after_open:
             self.is_success = True
-            reward = 5
+            reward = 10
         
+        reward = reward / 10.0
+
         return reward
         
         

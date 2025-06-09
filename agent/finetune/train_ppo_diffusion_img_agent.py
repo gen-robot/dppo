@@ -56,14 +56,20 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
             else:
                 self.venv.set_record_mode(render_mode)
             if render_mode:
+                eval_mode = self.itr % self.val_freq == 0 and not self.force_train
+                if eval_mode:
+                    surfix = "eval"
+                else:
+                    surfix = "train"
+
                 video_writers = []
                 for env_ind in range(min(self.n_render, self.n_envs)):
                     options_venv[env_ind]["video_path"] = os.path.join(
-                        self.render_dir, f"itr-{self.itr}_trial-{env_ind}.mp4"
+                        self.render_dir, f"itr-{self.itr}_trial-{env_ind}-{surfix}.mp4"
                     )
             
                     video_writer = {"third": imageio.get_writer(
-                        os.path.join( self.render_dir, f"itr-{self.itr}_trial-{env_ind}.mp4"),
+                        os.path.join( self.render_dir, f"itr-{self.itr}_trial-{env_ind}-{surfix}.mp4"),
                         fps=20,
                         format="FFMPEG",
                         codec="h264",
@@ -144,6 +150,7 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 obs_venv, reward_venv, terminated_venv, truncated_venv, info_venv = (
                     self.venv.step(action_venv)
                 )
+                # print("pit_check:", info_venv.keys())
                 single_step_time = time.time() - step_start
                 # print(f"{single_step_time=}")
                 env_step_time += single_step_time
@@ -157,6 +164,9 @@ class TrainPPOImgDiffusionAgent(TrainPPODiffusionAgent):
                 ### record in sapien env
                 if render_mode:
                     record_list = info_venv.get("record_list", []) # List[List[tensor: [H, W, 3], n_act], n_envs]
+                    # print(f"record_list: {len(record_list)}")
+                    # print("list_0:", len(record_list[0]) if len(record_list) > 0 else 0)
+                    # print("subshape:", record_list[0][0].shape if len(record_list) > 0 and len(record_list[0]) > 0 else None)
                     for env_id, (video_writer, env_record) in enumerate(zip(video_writers, record_list)):
                         for record in env_record:
                             video_writer["third"].append_data(record)
