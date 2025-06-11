@@ -12,7 +12,7 @@ normalization_path: /nvme_data/liangzhi/dppo_model/pretrain/drawer/norm_stats_1.
 
 seed: 0 # 42
 device: cuda:0
-env_name: drawer
+env_name: drawer_push
 obs_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1)
 action_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1) 
 denoising_steps: 50  
@@ -24,16 +24,16 @@ act_steps: 10
 use_ddim: True
 
 env:
-  n_envs: 1  #  1
+  n_envs: 50  #  1
   asynchronous: True # False
   name: ${env_name}
   env_type: "sapien"
-  max_episode_steps: 400
+  max_episode_steps: 200
   
   use_gui: False
   save_video: True
 
-  best_reward_threshold_for_success: 5.0
+  best_reward_threshold_for_success: 1.0
   use_image_obs: True
   reset_at_iteration: True  # mixture obj? single obj?
   normalization_path: ${normalization_path}
@@ -57,7 +57,7 @@ wandb:
 train:
   n_train_itr: 1
   n_critic_warmup_itr: 2 
-  n_steps: 40
+  n_steps: 20
   gamma: 0.999 
   augment: True
   grad_accumulate: 15
@@ -77,7 +77,7 @@ train:
   val_freq: 10
   render:
     freq: 1
-    num: 1
+    num: 5
   # PPO specific
   reward_scale_running: True
   reward_scale_const: 1.0

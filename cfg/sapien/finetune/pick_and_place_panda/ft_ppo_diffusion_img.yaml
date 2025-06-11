@@ -24,7 +24,7 @@ act_steps: 10
 use_ddim: True
 
 env:
-  n_envs: 50  #  1
+  n_envs: 40  #  1
   asynchronous: True # False
   name: ${env_name}
   env_type: "sapien"
@@ -50,24 +50,24 @@ shape_meta:
     shape: [10]
 
 wandb:
-  entity: "zhou-zt21-tsinghua-university"
-  project: dppo-sapien-${env_name}
-  run: ${now:%H-%M-%S}_${name}
+  entity: "slzhta"
+  project: dppo-sapien
+  run: ${env_name}_${now:%H-%M-%S}_${name}
   mode: "online"  # "online" or "offline"
 
 train:
-  n_train_itr: 1000  
-  n_critic_warmup_itr: 2 
-  n_steps: 40
+  n_train_itr: 1000
+  n_critic_warmup_itr: 8
+  n_steps: 200
   gamma: 0.999 
   augment: True
-  grad_accumulate: 15
-  actor_lr: 5e-5
+  grad_accumulate: 50
+  actor_lr: 1e-5
   actor_weight_decay: 0
   actor_lr_scheduler:
     first_cycle_steps: ${train.n_train_itr}
     warmup_steps: 10
-    min_lr: 5e-5
+    min_lr: 1e-5
   critic_lr: 1e-3
   critic_weight_decay: 0
   critic_lr_scheduler:
@@ -75,17 +75,17 @@ train:
     warmup_steps: 10
     min_lr: 1e-3
   save_model_freq: 10
-  val_freq: 10
+  val_freq: 20
   render:
-    freq: 10
+    freq: 5
     num: 5
   # PPO specific
   reward_scale_running: True
-  reward_scale_const: 1.0
+  reward_scale_const: 0.01
   gae_lambda: 0.95
-  batch_size: 500
-  logprob_batch_size: 500
-  update_epochs: 10
+  batch_size: 160
+  logprob_batch_size: 160
+  update_epochs: 1
   vf_coef: 0.5
   target_kl: 1
 
@@ -97,8 +97,8 @@ model:
   clip_ploss_coef_base: 0.001
   clip_ploss_coef_rate: 3
   randn_clip_value: 3
-  min_sampling_denoising_std: 0.1
-  min_logprob_denoising_std: 0.1
+  min_sampling_denoising_std: 0.01
+  min_logprob_denoising_std: 0.01
   #  
   use_ddim: ${use_ddim} 
   ddim_steps: ${ft_denoising_steps} 
@@ -140,12 +140,7 @@ model:
     activation_type: Mish
     residual_style: True
     cond_dim: ${eval:'${obs_dim} * ${cond_steps}'}
-  # critic:
-  #   _target_: model.resnet.critic.ResNetCritic
-  #   mlp_dims: [256, 256, 256]
-  #   activation_type: Mish
-  #   residual_style: True
-  #   backbone_ckpt: ${base_policy_path}
+
   ft_denoising_steps: ${ft_denoising_steps}
   horizon_steps: ${horizon_steps}
   obs_dim: ${obs_dim}

@@ -12,7 +12,7 @@ normalization_path: /nvme_data/liangzhi/dppo_model/pretrain/drawer/norm_stats_1.
 
 seed: 42
 device: cuda:0
-env_name: drawer
+env_name: drawer_push
 obs_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1)
 action_dim: 10  # tcp_pose_trans(3+6) + gripper_width (1) 
 denoising_steps: 50  
@@ -28,7 +28,7 @@ env:
   asynchronous: True # False
   name: ${env_name}
   env_type: "sapien"
-  max_episode_steps: 250
+  max_episode_steps: 200
 
   use_gui: False
   save_video: True
@@ -97,8 +97,8 @@ model:
   clip_ploss_coef_base: 0.001
   clip_ploss_coef_rate: 3
   randn_clip_value: 3
-  min_sampling_denoising_std: 0.01
-  min_logprob_denoising_std: 0.01
+  min_sampling_denoising_std: 0.03
+  min_logprob_denoising_std: 0.03
   #  
   use_ddim: ${use_ddim} 
   ddim_steps: ${ft_denoising_steps} 

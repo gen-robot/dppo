@@ -654,7 +654,7 @@ class PickAndPlaceEnv(BaseEnv):
                 "init_base_pose": self.init_base_pose,
             }
         )
-        return obs, reward, is_success, False, info
+        return obs, reward, False, False, info
 
     # compute all the observations
     def _update_observation(self):

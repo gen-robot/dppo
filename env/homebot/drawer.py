@@ -575,12 +575,13 @@ class DrawerPushAndPullEnv(BaseEnv):
         
         tcp_to_handle_dist = np.linalg.norm(tcp_pose.p - handle_pose.p)
         reaching_reward = 1.0 - np.tanh(5.0 * tcp_to_handle_dist)
-        reward += reaching_reward
+        # reward += reaching_reward # Delete reaching reward
         
         # open reward
         if not self.has_open:
             open_amount = max(0, self.drawers[drawer_id].get_qpos()[0])
-            open_reward = 2 * (1 - (self.target_open_amount - open_amount))
+            # open_reward = 2 * (1 - (self.target_open_amount - open_amount))
+            open_reward = 0 # Only stage reward
             
             if open_amount > self.target_open_amount:
                 open_reward = 2
@@ -589,9 +590,10 @@ class DrawerPushAndPullEnv(BaseEnv):
             
         # close reward
         if self.has_open and not self.has_close_after_open:
-            reward += 2
+            reward += 2 # for open reward
             open_amount = max(0, self.drawers[drawer_id].get_qpos()[0])
-            close_reward = 2 * (1 - open_amount)
+            # close_reward = 2 * (1 - open_amount) 
+            close_reward = 0 # Only stage reward
             if open_amount < 1e-3:
                 close_reward = 2
                 self.has_close_after_open = True
