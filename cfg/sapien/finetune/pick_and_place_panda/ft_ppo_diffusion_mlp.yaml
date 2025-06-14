@@ -6,7 +6,8 @@ hydra:
 _target_: agent.finetune.train_ppo_diffusion_agent.TrainPPODiffusionAgent
 
 name: ${env_name}_ppo_diffusion_mlp_ta${horizon_steps}_td${denoising_steps}_tdf${ft_denoising_steps}
-logdir: ${oc.env:DPPO_LOG_DIR}/sapien-finetune/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
+run_dir: /nvme_data/liangzhi
+logdir: ${run_dir}/log/dppo/sapien-finetune/${name}/${now:%Y-%m-%d}_${now:%H-%M-%S}_${seed}
 base_policy_path: /home/susichang/sichang/dppo/policy_step_250000_seed_0.ckpt
 
 # 环境数据路径
