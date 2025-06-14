@@ -35,3 +35,14 @@ ln -s \path\to\asset asset
 python script/run.py --config-name=ft_ppo_diffusion_img --config-dir=cfg/sapien/finetune/microwave \
 run_dir=\path\to\run_dir base_policy_path=\path\to\pretrained_model normalization_path=\path\to\normalization_status
 ```
+
+
+## 仓库内容
+
+训练环境为 Homebot，在 `\env\homebot` 下。
+
+模型主要定义在 `\model\diffusion\diffusion_ppo.py` 中。
+
+训练代码实现在 `\agent\finmetune\train_poo_diffusion_img_agent.py` 中。
+
+超参数定义在 `\cfg\sapien\finetune` 文件夹中。
